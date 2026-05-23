@@ -1,0 +1,29 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/music-api/:endpoint",
+      "destination": "/api/music-api?endpoint=:endpoint"
+    },
+    {
+      "source": "/music-api/album/:id",
+      "destination": "/api/music-api?endpoint=album&id=:id"
+    },
+    {
+      "source": "/music-api/artist/:id",
+      "destination": "/api/music-api?endpoint=artist&id=:id"
+    },
+    {
+      "source": "/music-api/playlist/:id",
+      "destination": "/api/music-api?endpoint=playlist&id=:id"
+    },
+    {
+      "source": "/music-api/lyrics/:id",
+      "destination": "/api/music-api?endpoint=lyrics&id=:id"
+    },
+    {
+      "source": "/bare/:path*",
+      "destination": "/api/bare"
+    }
+  ]
+}

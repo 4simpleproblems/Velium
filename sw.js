@@ -1,0 +1,88 @@
+importScripts('uv/uv.bundle.js');
+importScripts('uv/uv.config.js');
+importScripts('baremux/index.js');
+
+const workerPath = location.origin + "/baremux/worker.js";
+const connection = new BareMux.WorkerConnection(workerPath);
+const bareClient = new BareMux.BareClient(connection);
+
+importScripts(__uv$config.sw || 'uv/uv.sw.js');
+
+const uv = new UVServiceWorker();
+uv.bareClient = bareClient;
+
+self.addEventListener('message', (event) => {
+    if (event.data && (event.data.type === 'baremuxinit' || event.data.type === 'baremuxready')) {
+        const port = event.data.port || (event.ports && event.ports[0]);
+        if (port) {
+            connection.port = port;
+        }
+    }
+});
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', event => {
+    const url = event.request.url;
+    const prefix = "/uv/service/";
+
+    event.respondWith(
+        (async () => {
+            const isEncoded = url.includes('hvtrs8');
+            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net');
+            
+            let targetEvent = event;
+            let shouldRoute = uv.route(event);
+
+            if (!shouldRoute && (isEncoded || isMediaDomain)) {
+                let encodedPart = "";
+                if (isEncoded) {
+                    encodedPart = url.split('hvtrs8')[1];
+                    const fullProxyUrl = location.origin + prefix + 'hvtrs8' + encodedPart;
+                    targetEvent = Object.assign(Object.create(event), { request: new Request(fullProxyUrl, event.request) });
+                    shouldRoute = true;
+                } else if (isMediaDomain) {
+                    const encoded = "hvtrs8" + Ultraviolet.codec.xor.encode(url).split('hvtrs8')[1];
+                    const fullProxyUrl = location.origin + prefix + encoded;
+                    targetEvent = Object.assign(Object.create(event), { request: new Request(fullProxyUrl, event.request) });
+                    shouldRoute = true;
+                }
+            }
+
+            if (shouldRoute) {
+                const unroutedUrl = uv.unroute(targetEvent);
+                const isMedia = targetEvent.request.destination === 'image' || 
+                                targetEvent.request.destination === 'audio' ||
+                                unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i);
+
+                if (isMedia) {
+                    try {
+                        const headers = {};
+                        for (const [k, v] of targetEvent.request.headers.entries()) {
+                            headers[k] = v;
+                        }
+
+                        const response = await bareClient.fetch(unroutedUrl, {
+                            headers,
+                            method: targetEvent.request.method,
+                            body: targetEvent.request.method === 'GET' || targetEvent.request.method === 'HEAD' ? null : await targetEvent.request.clone().arrayBuffer(),
+                            redirect: 'follow'
+                        });
+                        return response;
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                }
+
+                return await uv.fetch(targetEvent);
+            }
+            return await fetch(event.request);
+        })()
+    );
+});
