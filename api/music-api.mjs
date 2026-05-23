@@ -85,16 +85,65 @@ export default async function handler(req, res) {
                 const search = await yt.music.search(searchQuery);
                 return search;
             } catch (e) {
-                return { songs: [], albums: [], artists: [], playlists: [] };
+                return null;
             }
-        }).catch(() => ({ songs: [], albums: [], artists: [], playlists: [] })),
+        }).catch(() => null),
         fetch(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(searchQuery)}&offset=${offset || 0}&limit=${limit || 25}`)
             .then(r => r.ok ? r.json() : { collection: [] })
             .catch(() => ({ collection: [] }))
       ]);
 
       let tracks = [];
-      
+      let ytSongs = [];
+      let ytAlbums = [];
+      let ytArtists = [];
+      let ytPlaylists = [];
+
+      if (ytMusicRes && ytMusicRes.contents) {
+          const shelves = ytMusicRes.contents || [];
+          shelves.forEach(shelf => {
+              const shelfTitle = shelf.title?.toString().toLowerCase() || shelf.header?.title?.toString().toLowerCase() || '';
+              const items = shelf.contents || [];
+              
+              if (shelf.type === 'MusicCardShelf') {
+                  const subtitle = shelf.subtitle?.toString().toLowerCase() || '';
+                  const title = shelf.title?.toString() || '';
+                  if (subtitle.includes('song')) {
+                      ytSongs.push({
+                          id: shelf.id ? `ytm-${shelf.id}` : null,
+                          title: title,
+                          artist_name: shelf.header?.title?.toString() || 'YT Music Artist',
+                          artwork_url: shelf.thumbnail?.contents?.[0]?.url,
+                          duration: 0,
+                          youtube_id: shelf.id,
+                          source: 'YTMusic'
+                      });
+                  } else if (subtitle.includes('artist')) {
+                      ytArtists.push({
+                          id: shelf.id ? `ytm-${shelf.id}` : (shelf.endpoint?.payload?.browseId ? `ytm-${shelf.endpoint.payload.browseId}` : null),
+                          name: title,
+                          artwork_url: shelf.thumbnail?.contents?.[0]?.url
+                      });
+                  }
+              }
+
+              items.forEach(item => {
+                  const itemType = item.item_type?.toLowerCase() || '';
+                  let targetGroup = null;
+                  if (itemType.includes('song') || shelfTitle.includes('song')) targetGroup = ytSongs;
+                  else if (itemType.includes('album') || shelfTitle.includes('album')) targetGroup = ytAlbums;
+                  else if (itemType.includes('artist') || shelfTitle.includes('artist')) targetGroup = ytArtists;
+                  else if (itemType.includes('playlist') || shelfTitle.includes('playlist')) targetGroup = ytPlaylists;
+                  else if (item.duration) targetGroup = ytSongs;
+                  else if (item.song_count) targetGroup = ytPlaylists;
+                  
+                  if (targetGroup) {
+                      targetGroup.push(item);
+                  }
+              });
+          });
+      }
+
       if (musicApiRes && musicApiRes.SONG_NAME) {
           tracks.push({
               id: `mapi-${musicApiRes.ID}`,
@@ -107,16 +156,15 @@ export default async function handler(req, res) {
           });
       }
 
-      if (ytMusicRes.songs) {
-          const ytTracks = ytMusicRes.songs.map(item => {
+      if (ytSongs.length > 0) {
+          const ytTracks = ytSongs.map(item => {
               if (!item) return null;
-              
               const title = item.title?.toString() || item.name?.toString() || 'Unknown Title';
               const artist = item.artists?.[0]?.name?.toString() || item.author?.name?.toString() || 'YT Music Artist';
               const artistId = item.artists?.[0]?.id || item.author?.id;
-              const thumbnail = item.thumbnails?.[0]?.url || item.thumbnail?.url;
+              const thumbnail = item.thumbnails?.[0]?.url || item.thumbnail?.url || item.artwork_url;
               const duration = (item.duration?.seconds || 0) * 1000;
-              const rawId = item.id || item.video_id;
+              const rawId = item.id || item.video_id || item.youtube_id;
               const trackId = rawId ? `ytm-${rawId}` : `ytm-gen-${Math.random().toString(36).substr(2, 9)}`;
 
               return {
@@ -138,38 +186,41 @@ export default async function handler(req, res) {
           const argonTracks = argonRes.collection.map(item => {
               let artwork = item.song?.img?.big || item.song?.img?.small || (Array.isArray(item.image) ? item.image[item.image.length-1].link : item.image);
               if (artwork && artwork.startsWith('/api/')) artwork = ARGON_BASE + artwork;
-              
+              const songUrl = item.song?.url || item.url || '';
+              const encodedId = Buffer.from(songUrl).toString('base64url');
+              const durationSecs = (item.song?.duration?.hours || 0) * 3600 + (item.song?.duration?.minutes || 0) * 60 + (item.song?.duration?.seconds || 0);
+
               return {
-                  id: `argon-${item.id}`,
+                  id: `argon-${encodedId}`,
                   title: item.song?.name || item.name,
                   artist_name: item.author?.name || 'Argon Artist',
                   artist_id: item.author?.id ? `argon-${item.author.id}` : null,
                   artwork_url: artwork,
-                  duration: (item.song?.duration || 0) * 1000,
-                  url: item.song?.url || item.url,
+                  duration: durationSecs * 1000,
+                  url: songUrl,
                   source: 'Argon'
               };
           });
           tracks.push(...argonTracks);
       }
 
-      const albums = (ytMusicRes.albums || []).map(item => ({
+      const albums = ytAlbums.map(item => ({
           id: item.id ? `ytm-${item.id}` : null,
-          name: item.title?.toString(),
+          name: item.title?.toString() || item.name?.toString(),
           artist_name: item.author?.name || item.artists?.[0]?.name?.toString() || 'YT Music Artist',
-          artwork_url: item.thumbnails?.[0]?.url
+          artwork_url: item.thumbnails?.[0]?.url || item.thumbnail?.url
       })).filter(a => a.id);
 
-      const artists = (ytMusicRes.artists || []).map(item => ({
+      const artists = ytArtists.map(item => ({
           id: item.id ? `ytm-${item.id}` : null,
-          name: item.name?.toString(),
-          artwork_url: item.thumbnails?.[0]?.url
+          name: item.name?.toString() || item.title?.toString(),
+          artwork_url: item.thumbnails?.[0]?.url || item.thumbnail?.url || item.artwork_url
       })).filter(a => a.id);
 
-      const playlists = (ytMusicRes.playlists || []).map(item => ({
+      const playlists = ytPlaylists.map(item => ({
           id: item.id ? `ytm-${item.id}` : null,
-          name: item.title?.toString(),
-          artwork_url: item.thumbnails?.[0]?.url,
+          name: item.title?.toString() || item.name?.toString(),
+          artwork_url: item.thumbnails?.[0]?.url || item.thumbnail?.url,
           song_count: item.song_count || 0
       })).filter(p => p.id);
 

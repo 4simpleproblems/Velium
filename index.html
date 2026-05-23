@@ -7,7 +7,7 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;600;800;900&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -93,7 +93,8 @@
                         'brand-border': 'var(--border-main)',
                     },
                     fontFamily: {
-                        sans: ['Geist', 'sans-serif'],
+                        sans: ['Nunito', 'sans-serif'],
+                        mono: ['Roboto Mono', 'monospace'],
                     },
                 }
             }
@@ -124,8 +125,9 @@
         }
         .loader-bar {
             width: 200px;
-            height: 2px;
-            background: var(--border-main);
+            height: 8px;
+            background: var(--bg-page);
+            border: var(--border-width) solid var(--border-main);
             border-radius: 4px;
             overflow: hidden;
             position: relative;
@@ -150,23 +152,42 @@
         }
         
         :root {
-            --bg-page: #08090C;
-            --bg-card: #111318;
-            --text-main: #ffffff;
-            --text-muted: #94a3b8;
+            --bg-page: #f4f4f5;
+            --bg-card: #ffffff;
+            --text-main: #1a1a1a;
+            --text-muted: #6b7280;
+            --border-main: #1a1a1a;
+            --shadow-color: #1a1a1a;
+            --border-width: 4px;
             --accent-color: #8b5cf6;
-            --accent-glow: rgba(139, 92, 246, 0.3);
-            --border-main: #1e293b;
-            --border-faint: rgba(255,255,255,0.03);
-            --btn-bg: rgba(139, 92, 246, 0.1);
-            --btn-text: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.15);
+            --accent-shadow: #6d28d9;
+            --btn-bg: #ffffff;
+            --btn-text: #1a1a1a;
+            --card-shadow: 8px 8px 0px var(--shadow-color);
+            --btn-shadow: 4px 4px 0px var(--shadow-color);
+        }
+
+        html.dark {
+            --bg-page: #0c0d10;
+            --bg-card: #16171d;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-main: #ffffff;
+            --shadow-color: #000000;
+            --accent-color: #a78bfa;
+            --accent-glow: rgba(167, 139, 250, 0.15);
+            --accent-shadow: #8b5cf6;
+            --btn-bg: #16171d;
+            --btn-text: #ffffff;
+            --card-shadow: 8px 8px 0px var(--accent-shadow);
+            --btn-shadow: 4px 4px 0px var(--accent-shadow);
         }
 
         body { 
-            font-family: 'Geist', sans-serif; 
+            font-family: 'Nunito', sans-serif; 
             background-color: var(--bg-page); 
-            color: var(--text-muted);
-            font-weight: 300; 
+            color: var(--text-main);
             overflow: hidden;
             transition: background-color 0.3s ease, color 0.3s ease;
             margin: 0;
@@ -174,11 +195,38 @@
         }
 
         h1, h2, h3, h4, h5, h6 {
-            font-weight: 400 !important;
+            font-family: 'Alfa Slab One', serif;
+            font-weight: normal !important;
             color: var(--text-main);
+            letter-spacing: -1px;
         }
 
         .keep-white { color: #ffffff !important; }
+
+        .category-card {
+            border: var(--border-width) solid var(--border-main);
+            border-radius: 20px;
+            box-shadow: var(--btn-shadow);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: rotate(1.5deg);
+        }
+
+        .category-card:hover {
+            transform: rotate(0deg) translateY(-4px) scale(1.02);
+            box-shadow: 6px 6px 0px var(--accent-color);
+        }
+
+        #currentTimeLabel, #durationLabel, #fsCurrentTime, #fsDuration, .font-mono {
+            font-family: 'Roboto Mono', monospace !important;
+            font-weight: 700;
+        }
+
+        .bg-card-dark {
+            background-color: var(--bg-card) !important;
+            border: var(--border-width) solid var(--border-main) !important;
+            border-radius: 24px !important;
+            box-shadow: var(--card-shadow) !important;
+        }
 
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
@@ -189,7 +237,7 @@
                 "sidebar main"
                 "playbar playbar";
             grid-template-columns: 280px 1fr;
-            grid-template-rows: 1fr 90px;
+            grid-template-rows: 1fr 100px;
             height: calc(100vh - 64px);
             width: 100%;
             background: var(--bg-page);
@@ -202,7 +250,7 @@
                 grid-template-areas: 
                     "main"
                     "playbar";
-                grid-template-rows: 1fr 90px;
+                grid-template-rows: 1fr 100px;
                 height: calc(100vh - 64px);
             }
 
@@ -222,8 +270,8 @@
 
         .sidebar {
             grid-area: sidebar;
-            background: var(--bg-page);
-            border-right: 1px solid var(--border-main);
+            background: var(--bg-card);
+            border-right: var(--border-width) solid var(--border-main);
             display: flex;
             flex-direction: column;
             padding: 32px 0;
@@ -239,16 +287,14 @@
 
         .now-playing-bar {
             grid-area: playbar;
-            background: var(--bg-page);
-            opacity: 0.95;
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border-main);
+            background: var(--bg-card);
+            border-top: var(--border-width) solid var(--border-main);
             display: grid;
             grid-template-columns: 1fr 2fr 1fr;
             padding: 0 32px;
             align-items: center;
             z-index: 100;
-            height: 90px;
+            height: 100px;
             box-sizing: border-box;
         }
 
@@ -257,53 +303,58 @@
             align-items: center;
             gap: 16px;
             padding: 12px 24px;
-            color: var(--text-muted);
-            opacity: 0.7;
-            font-size: 0.9rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            font-weight: 800;
+            transition: all 0.2s ease;
             cursor: pointer;
-            border-radius: 14px;
-            margin: 0 16px;
-            font-weight: 400;
+            border: var(--border-width) solid transparent;
+            border-radius: 16px;
+            margin: 4px 16px;
         }
 
-        .nav-item:hover, .nav-item.active {
-            color: var(--text-main);
-            opacity: 1;
-            background: var(--border-faint);
+        .nav-item:hover {
+            background: var(--bg-page);
+            border-color: var(--border-main);
+            box-shadow: var(--btn-shadow);
+            transform: translateY(-2px);
         }
 
         .nav-item.active {
-            color: var(--accent-color);
-            background: var(--btn-bg);
-            border: 1px solid var(--accent-glow);
+            background: var(--accent-color);
+            color: #000000 !important;
+            border-color: var(--border-main);
+            box-shadow: 4px 4px 0px var(--border-main);
+            transform: rotate(-1.5deg);
+        }
+
+        html.dark .nav-item.active {
+            color: #000000 !important;
         }
 
         .track-card {
             background: var(--bg-card);
-            border: 1px solid var(--border-faint);
-            border-radius: 18px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: var(--border-width) solid var(--border-main);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            transform: rotate(-1deg);
         }
 
         .track-card:hover {
-            border-color: var(--accent-color);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px -10px var(--accent-glow);
+            transform: rotate(0deg) translateY(-8px) scale(1.02);
+            box-shadow: 12px 12px 0px var(--accent-color);
         }
 
         .track-artwork {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            border-bottom: var(--border-width) solid var(--border-main);
             transition: transform 0.5s ease;
-        }
-
-        .track-card:hover .track-artwork {
-            transform: scale(1.05);
         }
 
         .view {
@@ -331,43 +382,50 @@
 
         .search-box {
             background: var(--bg-card);
-            border: 1px solid var(--border-main);
-            border-radius: 498px;
-            padding: 12px 24px;
+            border: var(--border-width) solid var(--border-main);
+            border-radius: 30px;
+            padding: 14px 28px;
             display: flex;
             align-items: center;
             gap: 12px;
             width: 100%;
             max-width: 600px;
-            transition: all 0.3s;
+            box-shadow: var(--btn-shadow);
+            transition: all 0.2s ease;
         }
 
         .search-box:focus-within {
-            border-color: var(--accent-color);
-            background: var(--bg-card);
-            box-shadow: 0 0 0 4px var(--btn-bg);
+            transform: translateY(-2px);
+            box-shadow: 6px 6px 0px var(--accent-color);
         }
 
         .player-btn {
-            color: var(--text-muted);
-            opacity: 0.7;
-            transition: all 0.2s;
+            color: var(--text-main);
+            transition: all 0.2s ease;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: var(--border-width) solid transparent;
+            border-radius: 50%;
         }
 
         .player-btn:hover {
-            color: var(--text-main);
-            opacity: 1;
+            background: var(--bg-page);
+            border-color: var(--border-main);
             transform: scale(1.1);
         }
 
         .player-btn.active {
-            color: var(--accent-color) !important;
-            opacity: 1;
+            background: var(--accent-color);
+            color: #000000 !important;
+            border-color: var(--border-main);
         }
 
         .player-btn.active i {
-            color: var(--accent-color) !important;
+            color: #000000 !important;
         }
 
         .player-btn.active i.fa-heart,
@@ -376,25 +434,28 @@
         }
 
         .progress-bar {
-            height: 4px;
-            background: var(--border-main);
-            border-radius: 2px;
+            height: 14px;
+            background: var(--bg-page);
+            border: var(--border-width) solid var(--border-main);
+            border-radius: 10px;
             cursor: pointer;
             position: relative;
+            overflow: hidden;
+            box-shadow: 2px 2px 0px var(--shadow-color);
         }
 
         .progress-bar-fill {
             height: 100%;
             background: var(--accent-color);
-            border-radius: 2px;
+            border-radius: 0;
             width: 0%;
         }
 
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(12px);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -404,26 +465,39 @@
 
         .modal-content {
             background: var(--bg-card);
-            border: 1px solid var(--border-main);
-            border-radius: 20px;
+            border: var(--border-width) solid var(--border-main);
+            border-radius: 24px;
             width: 90%;
             max-width: 450px;
             padding: 32px;
+            box-shadow: 10px 10px 0px var(--shadow-color);
         }
 
         .btn-niobium {
             background: var(--btn-bg);
-            border: 1px solid var(--accent-color);
-            color: var(--accent-color);
+            border: var(--border-width) solid var(--border-main);
+            color: var(--btn-text);
             padding: 10px 24px;
             border-radius: 12px;
-            transition: all 0.2s;
-            font-weight: 500;
+            box-shadow: var(--btn-shadow);
+            transition: all 0.2s ease;
+            font-family: 'Alfa Slab One', serif;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-niobium:hover {
-            background: var(--accent-color);
-            color: white;
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--accent-color);
+        }
+
+        .btn-niobium:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--border-main);
         }
 
         .side-panel {
@@ -433,7 +507,7 @@
             width: 400px;
             height: 100vh;
             background: var(--bg-card);
-            border-left: 1px solid var(--border-main);
+            border-left: var(--border-width) solid var(--border-main);
             transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 500;
         }
@@ -458,13 +532,15 @@
         #cropperContent {
             background-color: var(--bg-page);
             padding: 0;
-            border-radius: 20px;
-            border: 1px solid var(--border-main);
-            display: flex; flex-direction: column;
+            border-radius: 24px;
+            border: var(--border-width) solid var(--border-main);
+            display: flex; 
+            flex-direction: column;
             align-items: stretch;
             width: 90%;
             max-width: 600px;
             overflow: hidden;
+            box-shadow: 12px 12px 0px #000000;
         }
         #cropperCanvasContainer {
             position: relative;
@@ -476,7 +552,7 @@
             display: block;
             max-width: 100%;
             max-height: 60vh;
-            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border: 2px dashed var(--border-main);
         }
 
         .lyrics-line {
@@ -485,17 +561,23 @@
             color: var(--text-muted);
             opacity: 0.4;
             transition: all 0.3s;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
         }
 
         .lyrics-line.active {
             color: var(--text-main);
             opacity: 1;
             font-size: 1.5rem;
-            font-weight: 500;
+            font-weight: 900;
+            transform: scale(1.02);
         }
 
         .sidebar-toggle-btn {
             display: none;
+            background: var(--bg-card);
+            border: var(--border-width) solid var(--border-main);
+            box-shadow: 4px 4px 0px var(--border-main);
         }
 
         @media (max-width: 768px) {
@@ -529,7 +611,7 @@
                         <circle cx="12" cy="12" r="2" fill="currentColor"/>
                     </svg>
                 </div>
-                <span class="text-white font-black tracking-widest text-lg uppercase">Velium</span>
+                <span class="text-[var(--text-main)] font-black tracking-widest text-lg uppercase">Velium</span>
             </div>
             <div id="proxyStatus" class="flex items-center gap-2 text-xs font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
@@ -565,7 +647,7 @@
                 <div class="border-t border-[var(--border-main)] pt-6 px-6 mt-auto">
                     <div class="flex items-center justify-between mb-4">
                         <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] opacity-60">Playlists</span>
-                        <button onclick="showCreatePlaylistModal()" class="w-6 h-6 rounded-full border border-[var(--border-main)] flex items-center justify-center text-white hover:border-white transition-colors">
+                        <button onclick="showCreatePlaylistModal()" class="w-6 h-6 rounded-full border border-[var(--border-main)] flex items-center justify-center text-[var(--text-main)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors">
                             <i class="fas fa-plus text-xs"></i>
                         </button>
                     </div>
@@ -573,7 +655,7 @@
                 </div>
             </aside>
 
-            <button id="sidebarToggle" class="sidebar-toggle-btn fixed top-3 left-6 z-[1001] p-2 bg-card-dark border border-[var(--border-main)] rounded-full text-white text-md md:hidden">
+            <button id="sidebarToggle" class="sidebar-toggle-btn fixed top-3 left-6 z-[1001] p-2 bg-card-dark border border-[var(--border-main)] rounded-full text-[var(--text-main)] text-md md:hidden">
                 <i class="fas fa-bars"></i>
             </button>
 
@@ -601,8 +683,8 @@
                     <div id="searchResults" class="hidden">
                         <div class="flex gap-4 mb-6 border-b border-[var(--border-main)] pb-3">
                             <button id="tab-songs" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full bg-accent-indigo text-white" onclick="switchSearchTab('songs')">Songs</button>
-                            <button id="tab-playlists" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-white" onclick="switchSearchTab('playlists')">Playlists / Albums</button>
-                            <button id="tab-artists" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-white" onclick="switchSearchTab('artists')">Artists</button>
+                            <button id="tab-playlists" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)]" onclick="switchSearchTab('playlists')">Playlists / Albums</button>
+                            <button id="tab-artists" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)]" onclick="switchSearchTab('artists')">Artists</button>
                         </div>
 
                         <div id="tracksTab" class="search-tab-content active">
@@ -647,9 +729,9 @@
                         </div>
                         <div class="flex-1">
                             <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] opacity-60">Playlist</span>
-                            <h1 class="text-7xl font-black tracking-tighter mb-4 text-white">Liked Songs</h1>
+                            <h1 class="text-7xl font-black tracking-tighter mb-4 text-[var(--text-main)]">Liked Songs</h1>
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-white opacity-80" id="likedSongsCount">0 songs</span>
+                                <span class="font-bold text-[var(--text-main)] opacity-80" id="likedSongsCount">0 songs</span>
                             </div>
                         </div>
                     </div>
@@ -666,8 +748,17 @@
                     <h1 class="text-4xl font-bold mb-10 text-[var(--text-main)]">Settings</h1>
                     
                     <div class="max-w-2xl space-y-8">
+                         <div class="bg-card-dark p-6 rounded-2xl border border-[var(--border-main)]">
+                            <h2 class="text-xl font-semibold mb-4 text-[var(--text-main)]">Interface Mode</h2>
+                            <p class="text-xs text-[var(--text-muted)] mb-6">Switch between Light and Dark Neobrutalist interfaces</p>
+                            <div class="flex gap-4">
+                                <button onclick="setThemeMode('light')" class="btn-niobium">Light Mode</button>
+                                <button onclick="setThemeMode('dark')" class="btn-niobium">Dark Mode</button>
+                            </div>
+                        </div>
+
                         <div class="bg-card-dark p-6 rounded-2xl border border-[var(--border-main)]">
-                            <h2 class="text-xl font-semibold mb-4 text-white">Accent Theme</h2>
+                            <h2 class="text-xl font-semibold mb-4 text-[var(--text-main)]">Accent Theme</h2>
                             <p class="text-xs text-[var(--text-muted)] mb-6">Choose your preferred highlight color for the interface</p>
                             <div class="flex gap-4">
                                 <button onclick="setThemeAccent('violet', '#8b5cf6', 'rgba(139,92,246,0.3)')" class="w-10 h-10 rounded-full bg-violet-500 border-2 border-transparent focus:border-white transition-all"></button>
@@ -679,7 +770,7 @@
                         </div>
 
                         <div class="bg-card-dark p-6 rounded-2xl border border-[var(--border-main)]">
-                            <h2 class="text-xl font-semibold mb-4 text-white">Backup & Restore</h2>
+                            <h2 class="text-xl font-semibold mb-4 text-[var(--text-main)]">Backup & Restore</h2>
                             <p class="text-xs text-[var(--text-muted)] mb-6">Export your library data (liked songs and playlists) or restore from file</p>
                             <div class="flex gap-4">
                                 <button onclick="exportLibraryData()" class="btn-niobium flex items-center gap-2">
@@ -760,7 +851,7 @@
                 </div>
             </div>
             <div class="flex justify-end gap-3">
-                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors" onclick="hideCreatePlaylistModal()">Cancel</button>
+                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-[var(--text-main)] transition-colors" onclick="hideCreatePlaylistModal()">Cancel</button>
                 <button class="btn-niobium" id="savePlaylistBtn">Create Playlist</button>
             </div>
         </div>
@@ -781,7 +872,7 @@
                 </div>
             </div>
             <div class="flex justify-end gap-3">
-                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors" onclick="hideEditPlaylistModal()">Cancel</button>
+                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-[var(--text-main)] transition-colors" onclick="hideEditPlaylistModal()">Cancel</button>
                 <button class="btn-niobium" id="confirmEditPlaylistBtn">Save Changes</button>
             </div>
         </div>
@@ -792,7 +883,7 @@
             <h2 class="text-2xl font-bold mb-6 text-[var(--text-main)]">Add to Playlist</h2>
             <div id="playlistSelectionList" class="space-y-2 max-h-64 overflow-y-auto custom-scroll mb-8"></div>
             <div class="flex justify-end gap-3">
-                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors" onclick="hideAddToPlaylistModal()">Cancel</button>
+                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-[var(--text-main)] transition-colors" onclick="hideAddToPlaylistModal()">Cancel</button>
             </div>
         </div>
     </div>

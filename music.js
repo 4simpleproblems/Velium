@@ -248,6 +248,25 @@ function loadAppliedTheme() {
     }
 }
 
+function setThemeMode(mode) {
+    if (mode === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('velium_theme_mode', mode);
+    showToast(`Switched to ${mode} mode`, 'success');
+}
+
+function loadAppliedThemeMode() {
+    const savedMode = localStorage.getItem('velium_theme_mode') || 'dark';
+    if (savedMode === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+}
+
 function exportLibraryData() {
     const data = JSON.stringify({ likedSongs: favorites, playlists });
     const blob = new Blob([data], { type: 'application/json' });
@@ -285,7 +304,7 @@ function populateCategoriesGrid() {
     grid.innerHTML = '';
     genres.forEach(g => {
         const card = document.createElement('div');
-        card.className = `bg-gradient-to-br ${g.gradient} aspect-[2/1] rounded-2xl p-5 flex items-end cursor-pointer relative overflow-hidden group border border-white/10 hover:scale-[1.02] transition-all duration-300`;
+        card.className = `category-card bg-gradient-to-br ${g.gradient} aspect-[2/1] p-5 flex items-end cursor-pointer relative overflow-hidden group`;
         card.innerHTML = `
             <span class="text-lg font-black tracking-tight text-white z-10">${g.name}</span>
             <div class="absolute right-[-10px] bottom-[-10px] text-white/10 text-7xl font-bold group-hover:scale-110 transition-transform duration-300">
@@ -330,7 +349,7 @@ function switchSearchTab(tabName) {
         if (btn.id === `tab-${tabName}`) {
             btn.className = 'search-tab-btn font-bold text-sm px-4 py-2 rounded-full bg-accent-indigo text-white';
         } else {
-            btn.className = 'search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-white';
+            btn.className = 'search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)]';
         }
     });
 
@@ -413,7 +432,7 @@ async function handleSearch(query, append = false, forcedOffset = null) {
                     <div class="w-32 h-32 rounded-full overflow-hidden border border-[var(--border-main)] shrink-0">
                         ${artImg ? `<img src="${getProxyUrl(artImg)}" class="w-full h-full object-cover">` : `<div class="w-full h-full bg-slate-800 flex items-center justify-center"><i class="fas fa-user text-3xl"></i></div>`}
                     </div>
-                    <div class="font-bold truncate max-w-full text-white">${escapeHtml(art.name)}</div>
+                    <div class="font-bold truncate max-w-full text-[var(--text-main)]">${escapeHtml(art.name)}</div>
                 `;
                 card.addEventListener('click', () => loadArtistView(art.name));
                 artistsGrid.appendChild(card);
@@ -500,7 +519,7 @@ function renderPlaylistGrid(playlistsData, container) {
         card.className = 'track-card relative aspect-square p-0 overflow-hidden group';
         card.innerHTML = `
             <img src="${getProxyUrl(pl.artwork_url)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
-            <div class="absolute inset-x-0 bottom-0 h-1/3 bg-black/20 backdrop-blur-md border-t border-white/10 flex flex-col justify-center px-4 transition-transform duration-300 translate-y-2 group-hover:translate-y-0">
+            <div class="absolute inset-x-0 bottom-0 h-1/3 bg-black/60 backdrop-blur-md border-t border-white/10 flex flex-col justify-center px-4 transition-transform duration-300 translate-y-2 group-hover:translate-y-0">
                 <div class="font-bold text-sm truncate text-white mb-0.5">${escapeHtml(pl.name)}</div>
                 <div class="text-[10px] text-gray-300 truncate uppercase tracking-wider font-medium">${pl.song_count} songs</div>
             </div>
@@ -525,7 +544,7 @@ async function loadOfficialPlaylistDetails(playlistId) {
                     <h1 class="text-6xl font-black tracking-tighter mb-4">${escapeHtml(data.name)}</h1>
                     <p class="text-gray-500 mb-4">${data.description || 'Official Playlist'}</p>
                     <div class="flex items-center gap-2">
-                        <span class="font-bold text-white">${data.song_count} songs</span>
+                        <span class="font-bold text-[var(--text-main)]">${data.song_count} songs</span>
                     </div>
                 </div>
             </div>
@@ -664,7 +683,7 @@ function renderFavorites() {
 
 function createTrackRow(track, index, trackList, hideEllipsis = false) {
     const div = document.createElement('div');
-    div.className = 'flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 group cursor-pointer border border-transparent hover:border-brand-border transition-all';
+    div.className = 'flex items-center gap-4 p-3 rounded-xl hover:bg-[var(--text-main)]/5 group cursor-pointer border border-transparent hover:border-brand-border transition-all';
     
     const isLiked = favorites.some(f => getTrackUid(f) === getTrackUid(track));
     
@@ -676,8 +695,8 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
             </div>
         </div>
         <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm text-white truncate">${escapeHtml(track.title)}</div>
-            <div class="text-[10px] text-gray-500 truncate hover:underline hover:text-white" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
+            <div class="font-bold text-sm text-[var(--text-main)] truncate">${escapeHtml(track.title)}</div>
+            <div class="text-[10px] text-gray-500 truncate hover:underline hover:text-[var(--text-main)]" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
         </div>
         <div class="flex items-center gap-4">
             <button class="text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-500 transition-all" onclick="event.stopPropagation(); toggleLikeTrack(event, ${JSON.stringify(track).replace(/"/g, '&quot;')})">
@@ -685,7 +704,7 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
             </button>
             <span class="text-xs text-gray-500 font-mono w-10 text-right">${formatTime((getSavedTrackDuration(track) || track.duration || 0) / 1000)}</span>
             ${!hideEllipsis ? `
-            <button class="text-gray-500 hover:text-white" onclick="event.stopPropagation(); showAddToPlaylistModal('${getTrackUid(track)}')">
+            <button class="text-gray-500 hover:text-[var(--text-main)]" onclick="event.stopPropagation(); showAddToPlaylistModal('${getTrackUid(track)}')">
                 <i class="fas fa-ellipsis-h"></i>
             </button>` : ''}
         </div>
@@ -730,7 +749,7 @@ async function playTrack(index) {
     document.getElementById('currentTrackName').textContent = currentTrack.title;
     const artistNameEl = document.getElementById('currentArtistName');
     artistNameEl.textContent = currentTrack.artist_name;
-    artistNameEl.className = 'text-xs text-gray-500 truncate hover:underline hover:text-white cursor-pointer';
+    artistNameEl.className = 'text-xs text-gray-500 truncate hover:underline hover:text-[var(--text-main)] cursor-pointer';
     artistNameEl.onclick = () => loadArtistView(currentTrack.artist_name);
 
     const artwork = document.getElementById('currentArtwork');
@@ -1241,7 +1260,7 @@ function renderSidebarPlaylists() {
     container.innerHTML = '';
     playlists.forEach(pl => {
         const div = document.createElement('div');
-        div.className = 'nav-item py-2 px-4 rounded-xl text-xs font-semibold truncate hover:text-white cursor-pointer';
+        div.className = 'nav-item py-2 px-4 rounded-xl text-xs font-semibold truncate hover:text-[var(--text-main)] cursor-pointer';
         div.textContent = pl.name;
         div.addEventListener('click', () => loadLocalPlaylistDetails(pl.id));
         container.appendChild(div);
@@ -1289,7 +1308,7 @@ function loadLocalPlaylistDetails(playlistId) {
                 <h1 class="text-6xl font-black tracking-tighter mb-4">${escapeHtml(pl.name)}</h1>
                 <p class="text-gray-500 mb-4">${escapeHtml(pl.description) || 'Personal Playlist'}</p>
                 <div class="flex items-center gap-2">
-                    <span class="font-bold text-white" id="dynamicSongCount">${pl.tracks.length} songs</span>
+                    <span class="font-bold text-[var(--text-main)]" id="dynamicSongCount">${pl.tracks.length} songs</span>
                 </div>
             </div>
         </div>
@@ -1418,7 +1437,7 @@ function showAddToPlaylistModal(trackUid) {
     } else {
         playlists.forEach(pl => {
             const div = document.createElement('div');
-            div.className = 'p-3 hover:bg-white/5 rounded-xl cursor-pointer border border-transparent hover:border-brand-border text-white flex items-center justify-between';
+            div.className = 'p-3 hover:bg-[var(--text-main)]/5 rounded-xl cursor-pointer border border-transparent hover:border-brand-border text-[var(--text-main)] flex items-center justify-between';
             div.innerHTML = `
                 <div class="font-bold text-sm">${escapeHtml(pl.name)}</div>
                 <div class="text-xs text-gray-500">${pl.tracks.length} songs</div>
@@ -1710,6 +1729,7 @@ async function initApp() {
     isInitialized = true;
 
     loadAppliedTheme();
+    loadAppliedThemeMode();
     await loadLibraryData();
     setGreeting();
     setupEventListeners();
