@@ -46,6 +46,23 @@ export default async function handler(req, res) {
   const endpoint = (endpointFromQuery || endpointFromPath);
 
   try {
+    if (endpoint === 'proxy-image') {
+      const imageUrl = req.query.url;
+      if (!imageUrl) return res.status(400).json({ error: 'Missing url' });
+      try {
+        const imageRes = await fetch(imageUrl);
+        if (!imageRes.ok) throw new Error(`Failed to fetch: ${imageRes.statusText}`);
+        const contentType = imageRes.headers.get('content-type') || 'image/jpeg';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        const arrayBuffer = await imageRes.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        return res.status(200).send(buffer);
+      } catch (e) {
+        return res.status(500).json({ error: 'Proxy failed', message: e.message });
+      }
+    }
+
     if (endpoint === 'suggestions') {
       const searchQuery = q || query;
       if (!searchQuery) return res.status(400).json({ error: 'Missing query' });

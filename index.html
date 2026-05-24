@@ -3,19 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Velium - Stream Music</title>
-    
+    <title>4SP - VELIUM</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;600;800;900&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link rel="preload" href="/uv/uv.bundle.js" as="script">
     <link rel="preload" href="/baremux/index.js" as="script">
     <link rel="preload" href="/baremux/worker.js" as="worker">
     <link rel="preload" href="/uv/sw.js" as="worker">
-
     <script src="/uv/uv.bundle.js"></script>
     <script>
         const basePath = "/uv/";
@@ -39,12 +36,14 @@
                     const reg = await navigator.serviceWorker.register("/sw.js", {
                         scope: "/"
                     });
+                    console.log("VERN_SYSTEM SW Registered at root");
                     navigator.serviceWorker.addEventListener('controllerchange', () => {
                         if (!navigator.serviceWorker.controller) return;
+                        console.log("SW Activated, reloading...");
                         window.location.reload();
                     });
                 } catch (e) {
-                    console.error(e);
+                    console.error("SW Register Failed", e);
                 }
             }
             try {
@@ -55,6 +54,7 @@
                     { websocket: wispUrl },
                     { websocket: "wss://ruby.rubynetwork.xyz/wisp/" }
                 ]);
+                console.log("VELIUM: BareMux Transport Active (Local)");
                 const bc = new BroadcastChannel("bare-mux-sync");
                 const signalReady = () => {
                     const msg = { type: 'baremuxready', path: workerPath };
@@ -75,12 +75,12 @@
                     });
                 };
                 signalReady();
+                console.log("VELIUM: BareMux Ready Signal Sent");
             } catch (e) {
-                console.error(e);
+                console.error("BareMux Init Failed", e);
             }
         })();
     </script>
-
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -93,14 +93,12 @@
                         'brand-border': 'var(--border-main)',
                     },
                     fontFamily: {
-                        sans: ['Nunito', 'sans-serif'],
-                        mono: ['Roboto Mono', 'monospace'],
+                        sans: ['Geist', 'sans-serif'],
                     },
                 }
             }
         }
     </script>
-
     <style>
         #startup-loader {
             position: fixed;
@@ -125,9 +123,8 @@
         }
         .loader-bar {
             width: 200px;
-            height: 8px;
-            background: var(--bg-page);
-            border: var(--border-width) solid var(--border-main);
+            height: 2px;
+            background: var(--border-main);
             border-radius: 4px;
             overflow: hidden;
             position: relative;
@@ -150,110 +147,56 @@
             0% { left: -50%; }
             100% { left: 100%; }
         }
-        
         :root {
-            --bg-page: #f4f4f5;
-            --bg-card: #ffffff;
-            --text-main: #1a1a1a;
-            --text-muted: #6b7280;
-            --border-main: #1a1a1a;
-            --shadow-color: #1a1a1a;
-            --border-width: 4px;
-            --accent-color: #8b5cf6;
-            --accent-glow: rgba(139, 92, 246, 0.15);
-            --accent-shadow: #6d28d9;
-            --btn-bg: #ffffff;
-            --btn-text: #1a1a1a;
-            --card-shadow: 8px 8px 0px var(--shadow-color);
-            --btn-shadow: 4px 4px 0px var(--shadow-color);
+            --bg-page: var(--bg-primary, #000000);
+            --bg-card: var(--bg-secondary, #0d0d0d);
+            --text-main: var(--text-primary, #ffffff);
+            --text-muted: var(--text-secondary, #c0c0c0);
+            --accent-color: var(--accent-primary, #4f46e5);
+            --accent-glow: var(--accent-secondary, rgba(79, 70, 229, 0.4));
+            --border-main: var(--border-primary, #1a1a1a);
+            --border-faint: var(--border-secondary, rgba(255,255,255,0.05));
+            --btn-bg: var(--button-bg, rgba(79, 70, 229, 0.1));
+            --btn-text: var(--button-text, #4f46e5);
         }
-
-        html.dark {
-            --bg-page: #0c0d10;
-            --bg-card: #16171d;
-            --text-main: #ffffff;
-            --text-muted: #a1a1aa;
-            --border-main: #ffffff;
-            --shadow-color: #000000;
-            --accent-color: #a78bfa;
-            --accent-glow: rgba(167, 139, 250, 0.15);
-            --accent-shadow: #8b5cf6;
-            --btn-bg: #16171d;
-            --btn-text: #ffffff;
-            --card-shadow: 8px 8px 0px var(--accent-shadow);
-            --btn-shadow: 4px 4px 0px var(--accent-shadow);
-        }
-
-        body { 
-            font-family: 'Nunito', sans-serif; 
-            background-color: var(--bg-page); 
-            color: var(--text-main);
+        body {
+            font-family: 'Geist', sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-muted);
+            font-weight: 300;
             overflow: hidden;
             transition: background-color 0.3s ease, color 0.3s ease;
             margin: 0;
             padding: 0;
         }
-
         h1, h2, h3, h4, h5, h6 {
-            font-family: 'Alfa Slab One', serif;
-            font-weight: normal !important;
+            font-weight: 200 !important;
             color: var(--text-main);
-            letter-spacing: -1px;
         }
-
         .keep-white { color: #ffffff !important; }
-
-        .category-card {
-            border: var(--border-width) solid var(--border-main);
-            border-radius: 20px;
-            box-shadow: var(--btn-shadow);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform: rotate(1.5deg);
-        }
-
-        .category-card:hover {
-            transform: rotate(0deg) translateY(-4px) scale(1.02);
-            box-shadow: 6px 6px 0px var(--accent-color);
-        }
-
-        #currentTimeLabel, #durationLabel, #fsCurrentTime, #fsDuration, .font-mono {
-            font-family: 'Roboto Mono', monospace !important;
-            font-weight: 700;
-        }
-
-        .bg-card-dark {
-            background-color: var(--bg-card) !important;
-            border: var(--border-width) solid var(--border-main) !important;
-            border-radius: 24px !important;
-            box-shadow: var(--card-shadow) !important;
-        }
-
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
-
         .app-container {
             display: grid;
-            grid-template-areas: 
+            grid-template-areas:
                 "sidebar main"
                 "playbar playbar";
             grid-template-columns: 280px 1fr;
-            grid-template-rows: 1fr 100px;
+            grid-template-rows: 1fr 90px;
             height: calc(100vh - 64px);
             width: 100%;
             background: var(--bg-page);
             box-sizing: border-box;
         }
-
         @media (max-width: 768px) {
             .app-container {
                 grid-template-columns: 1fr;
-                grid-template-areas: 
+                grid-template-areas:
                     "main"
                     "playbar";
-                grid-template-rows: 1fr 100px;
+                grid-template-rows: 1fr 90px;
                 height: calc(100vh - 64px);
             }
-
             .sidebar {
                 position: fixed;
                 top: 0;
@@ -262,199 +205,160 @@
                 z-index: 1000;
                 transition: left 0.3s ease-in-out;
             }
-
             .sidebar.open {
                 left: 0;
             }
         }
-
         .sidebar {
             grid-area: sidebar;
-            background: var(--bg-card);
-            border-right: var(--border-width) solid var(--border-main);
+            background: var(--bg-page);
+            border-right: 1px solid var(--border-main);
             display: flex;
             flex-direction: column;
             padding: 32px 0;
             overflow-y: auto;
         }
-
         .main-view {
             grid-area: main;
             background: var(--bg-page);
             overflow-y: auto;
             position: relative;
         }
-
         .now-playing-bar {
             grid-area: playbar;
-            background: var(--bg-card);
-            border-top: var(--border-width) solid var(--border-main);
+            background: var(--bg-page);
+            opacity: 0.9;
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-main);
             display: grid;
             grid-template-columns: 1fr 2fr 1fr;
             padding: 0 32px;
             align-items: center;
             z-index: 100;
-            height: 100px;
+            height: 90px;
             box-sizing: border-box;
         }
-
         .nav-item {
             display: flex;
             align-items: center;
             gap: 16px;
             padding: 12px 24px;
-            color: var(--text-main);
-            font-size: 0.95rem;
-            font-weight: 800;
-            transition: all 0.2s ease;
+            color: var(--text-muted);
+            opacity: 0.6;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            border: var(--border-width) solid transparent;
-            border-radius: 16px;
-            margin: 4px 16px;
+            border-radius: 18px;
+            margin: 0 16px;
+            font-weight: 300;
         }
-
-        .nav-item:hover {
-            background: var(--bg-page);
-            border-color: var(--border-main);
-            box-shadow: var(--btn-shadow);
-            transform: translateY(-2px);
+        .nav-item:hover, .nav-item.active {
+            color: var(--text-main);
+            opacity: 1;
+            background: var(--border-faint);
         }
-
         .nav-item.active {
-            background: var(--accent-color);
-            color: #000000 !important;
-            border-color: var(--border-main);
-            box-shadow: 4px 4px 0px var(--border-main);
-            transform: rotate(-1.5deg);
+            color: var(--accent-color);
+            background: var(--btn-bg);
+            border: 1px solid var(--accent-glow);
         }
-
-        html.dark .nav-item.active {
-            color: #000000 !important;
-        }
-
         .track-card {
             background: var(--bg-card);
-            border: var(--border-width) solid var(--border-main);
-            border-radius: 20px;
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid var(--border-faint);
+            border-radius: 22px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            transform: rotate(-1deg);
         }
-
         .track-card:hover {
-            transform: rotate(0deg) translateY(-8px) scale(1.02);
-            box-shadow: 12px 12px 0px var(--accent-color);
+            border-color: var(--accent-color);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -20px var(--accent-glow);
         }
-
         .track-artwork {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-bottom: var(--border-width) solid var(--border-main);
             transition: transform 0.5s ease;
         }
-
+        .track-card:hover .track-artwork {
+            transform: scale(1.05);
+        }
         .view {
             display: none;
             padding: 32px;
             animation: fadeIn 0.4s ease-out;
         }
-
         .view.active {
             display: block;
         }
-
         .search-tab-content {
             display: none;
         }
-
         .search-tab-content.active {
             display: block;
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         .search-box {
             background: var(--bg-card);
-            border: var(--border-width) solid var(--border-main);
-            border-radius: 30px;
-            padding: 14px 28px;
+            border: 1px solid var(--border-main);
+            border-radius: 498px;
+            padding: 12px 24px;
             display: flex;
             align-items: center;
             gap: 12px;
             width: 100%;
             max-width: 600px;
-            box-shadow: var(--btn-shadow);
-            transition: all 0.2s ease;
+            transition: all 0.3s;
         }
-
         .search-box:focus-within {
-            transform: translateY(-2px);
-            box-shadow: 6px 6px 0px var(--accent-color);
+            border-color: var(--accent-color);
+            background: var(--bg-card);
+            box-shadow: 0 0 0 4px var(--btn-bg);
         }
-
         .player-btn {
-            color: var(--text-main);
-            transition: all 0.2s ease;
+            color: var(--text-muted);
+            opacity: 0.6;
+            transition: all 0.2s;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border: var(--border-width) solid transparent;
-            border-radius: 50%;
         }
-
         .player-btn:hover {
-            background: var(--bg-page);
-            border-color: var(--border-main);
+            color: var(--text-main);
+            opacity: 1;
             transform: scale(1.1);
         }
-
         .player-btn.active {
-            background: var(--accent-color);
-            color: #000000 !important;
-            border-color: var(--border-main);
+            color: #4f46e5 !important;
+            opacity: 1;
         }
-
         .player-btn.active i {
-            color: #000000 !important;
+            color: #4f46e5 !important;
         }
-
         .player-btn.active i.fa-heart,
         .player-btn.active .fa-heart.text-red-500 {
             color: #ef4444 !important;
         }
-
         .progress-bar {
-            height: 14px;
-            background: var(--bg-page);
-            border: var(--border-width) solid var(--border-main);
-            border-radius: 10px;
+            height: 4px;
+            background: var(--border-main);
+            border-radius: 2px;
             cursor: pointer;
             position: relative;
-            overflow: hidden;
-            box-shadow: 2px 2px 0px var(--shadow-color);
         }
-
         .progress-bar-fill {
             height: 100%;
             background: var(--accent-color);
-            border-radius: 0;
+            border-radius: 2px;
             width: 0%;
         }
-
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
@@ -462,44 +366,27 @@
             z-index: 1000;
             display: none;
         }
-
         .modal-content {
             background: var(--bg-card);
-            border: var(--border-width) solid var(--border-main);
-            border-radius: 24px;
+            border: 1px solid var(--border-main);
+            border-radius: 22px;
             width: 90%;
             max-width: 450px;
             padding: 32px;
-            box-shadow: 10px 10px 0px var(--shadow-color);
         }
-
         .btn-niobium {
             background: var(--btn-bg);
-            border: var(--border-width) solid var(--border-main);
-            color: var(--btn-text);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
             padding: 10px 24px;
-            border-radius: 12px;
-            box-shadow: var(--btn-shadow);
-            transition: all 0.2s ease;
-            font-family: 'Alfa Slab One', serif;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            border-radius: 14px;
+            transition: all 0.2s;
+            font-weight: 500;
         }
-
         .btn-niobium:hover {
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px var(--accent-color);
+            background: var(--accent-color);
+            color: white;
         }
-
-        .btn-niobium:active {
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0px var(--border-main);
-        }
-
         .side-panel {
             position: fixed;
             right: -450px;
@@ -507,15 +394,13 @@
             width: 400px;
             height: 100vh;
             background: var(--bg-card);
-            border-left: var(--border-width) solid var(--border-main);
+            border-left: 1px solid var(--border-main);
             transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 500;
         }
-
         .side-panel.open {
             right: 0;
         }
-
         #cropperModal {
             display: none;
             position: fixed;
@@ -524,7 +409,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.85);
             justify-content: center;
             align-items: center;
             flex-direction: column;
@@ -532,60 +417,47 @@
         #cropperContent {
             background-color: var(--bg-page);
             padding: 0;
-            border-radius: 24px;
-            border: var(--border-width) solid var(--border-main);
-            display: flex; 
-            flex-direction: column;
+            border-radius: 22px;
+            border: 1px solid var(--border-main);
+            display: flex; flex-direction: column;
             align-items: stretch;
             width: 90%;
             max-width: 600px;
             overflow: hidden;
-            box-shadow: 12px 12px 0px #000000;
         }
         #cropperCanvasContainer {
             position: relative;
             margin-bottom: 20px;
             overflow: hidden;
-            max-height: 60vh; 
+            max-height: 60vh;
         }
         #cropperCanvas {
             display: block;
             max-width: 100%;
             max-height: 60vh;
-            border: 2px dashed var(--border-main);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
         }
-
         .lyrics-line {
             padding: 12px 0;
             font-size: 1.25rem;
             color: var(--text-muted);
             opacity: 0.4;
             transition: all 0.3s;
-            font-family: 'Nunito', sans-serif;
-            font-weight: 800;
         }
-
         .lyrics-line.active {
             color: var(--text-main);
             opacity: 1;
             font-size: 1.5rem;
-            font-weight: 900;
-            transform: scale(1.02);
+            font-weight: 500;
         }
-
         .sidebar-toggle-btn {
             display: none;
-            background: var(--bg-card);
-            border: var(--border-width) solid var(--border-main);
-            box-shadow: 4px 4px 0px var(--border-main);
         }
-
         @media (max-width: 768px) {
             .sidebar-toggle-btn {
                 display: block;
             }
         }
-
         .navbar-logo { transition: filter 0.3s ease, transform 0.3s ease; }
     </style>
 </head>
@@ -600,246 +472,183 @@
         <div class="loader-bar">
             <div class="loader-progress"></div>
         </div>
+        <span class="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Initializing Proxy</span>
     </div>
-
-    <div class="flex flex-col h-screen overflow-hidden">
-        <header class="h-16 border-b border-[var(--border-main)] flex items-center justify-between px-8 bg-deep-black z-[100] relative">
-            <div class="flex items-center gap-3">
-                <div class="text-accent-indigo w-8 h-8">
+    <script>
+        (function() {
+            const loader = document.getElementById('startup-loader');
+            const hideLoader = () => {
+                if (loader && !loader.classList.contains('hidden')) {
+                    loader.classList.add('hidden');
+                    console.log("VELIUM: Proxy Ready, hiding loader");
+                }
+            };
+            const bc = new BroadcastChannel("bare-mux-sync");
+            bc.onmessage = (event) => {
+                if (event.data && event.data.type === 'baremuxready') hideLoader();
+            };
+            setTimeout(hideLoader, 10000);
+        })();
+    </script>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="px-8 mb-10">
+                <a href="/index.html" class="flex items-center gap-3">
+                    <div class="text-accent-indigo w-8 h-8 navbar-logo" id="navbar-logo">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 16.5C9.51 16.5 7.5 14.49 7.5 12C7.5 9.51 9.51 7.5 12 7.5C14.49 7.5 16.5 9.51 16.5 12C16.5 14.49 14.49 16.5 12 16.5Z" fill="currentColor"/>
                         <circle cx="12" cy="12" r="2" fill="currentColor"/>
                     </svg>
                 </div>
-                <span class="text-[var(--text-main)] font-black tracking-widest text-lg uppercase">Velium</span>
+                    <span class="text-xl font-bold tracking-tighter text-[var(--text-main)]">VELIUM</span>
+                </a>
             </div>
-            <div id="proxyStatus" class="flex items-center gap-2 text-xs font-semibold px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400">
-                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                Proxy Connected
-            </div>
-        </header>
-
-        <div class="app-container flex-1">
-            <aside class="sidebar" id="sidebar">
-                <div class="flex flex-col gap-1 mb-8">
-                    <div class="nav-item active" data-view="homeView">
-                        <i class="fas fa-house text-lg"></i>
-                        <span>Home</span>
-                    </div>
-                    <div class="nav-item" data-view="searchView">
-                        <i class="fas fa-magnifying-glass text-lg"></i>
-                        <span>Search</span>
-                    </div>
-                    <div class="nav-item" data-view="libraryView">
-                        <i class="fas fa-folder text-lg"></i>
-                        <span>Library</span>
-                    </div>
-                    <div class="nav-item" data-view="favoritesView">
-                        <i class="fas fa-heart text-lg"></i>
-                        <span>Favorites</span>
-                    </div>
-                    <div class="nav-item" data-view="settingsView">
-                        <i class="fas fa-cog text-lg"></i>
-                        <span>Settings</span>
-                    </div>
+            <nav class="flex-1">
+                <div class="nav-item active" data-view="home">
+                    <i class="fas fa-house"></i>
+                    <span>Home</span>
                 </div>
-
-                <div class="border-t border-[var(--border-main)] pt-6 px-6 mt-auto">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] opacity-60">Playlists</span>
-                        <button onclick="showCreatePlaylistModal()" class="w-6 h-6 rounded-full border border-[var(--border-main)] flex items-center justify-center text-[var(--text-main)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors">
-                            <i class="fas fa-plus text-xs"></i>
+                <div class="nav-item" data-view="search">
+                    <i class="fas fa-search"></i>
+                    <span>Search</span>
+                </div>
+                <div class="nav-item" data-view="library">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Library</span>
+                </div>
+                <div class="h-px bg-brand-border my-6 mx-8"></div>
+                <div class="px-8 mb-4 flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Playlists</span>
+                    <div class="flex gap-2">
+                        <button class="create-playlist-btn text-gray-500 hover:text-white transition-colors" title="Create Playlist">
+                            <i class="fas fa-plus"></i>
                         </button>
                     </div>
-                    <div id="sidebar-playlists" class="space-y-1"></div>
                 </div>
-            </aside>
-
-            <button id="sidebarToggle" class="sidebar-toggle-btn fixed top-3 left-6 z-[1001] p-2 bg-card-dark border border-[var(--border-main)] rounded-full text-[var(--text-main)] text-md md:hidden">
+                <div id="sidebar-playlists" class="space-y-1">
+                </div>
+            </nav>
+        </aside>
+        <main class="main-view">
+            <button id="sidebarToggle" class="sidebar-toggle-btn fixed top-6 left-6 z-[1001] p-3 bg-card-dark rounded-full text-white text-xl md:hidden">
                 <i class="fas fa-bars"></i>
             </button>
-
-            <main class="main-view select-none">
-                <!-- Home View -->
-                <section class="view active" id="homeView">
-                    <div class="mb-10">
-                        <h1 class="text-4xl font-bold mb-2" id="greetingText">Good evening</h1>
-                        <p class="text-sm text-[var(--text-muted)] opacity-60">Handpicked popular music ready for unblocked streaming</p>
+            <section class="view active" id="homeView">
+                <div class="mb-10">
+                    <h1 class="text-4xl font-bold mb-2" id="greetingText">Good evening</h1>
+                    <p class="text-[var(--text-muted)] opacity-60">Discover something new today.</p>
+                </div>
+                <div class="mb-12">
+                    <h2 class="text-xl font-bold mb-6 text-[var(--text-main)]">Popular Tracks</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="popularTracks">
                     </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="popularTracks"></div>
-                </section>
-
-                <!-- Search View -->
-                <section class="view" id="searchView">
-                    <div class="flex flex-col gap-8 mb-10">
-                        <h1 class="text-4xl font-bold text-[var(--text-main)]">Search</h1>
-                        <div class="search-box">
-                            <i class="fas fa-magnifying-glass text-[var(--text-muted)] opacity-60"></i>
-                            <input type="text" id="searchInput" placeholder="Search for songs, artists, or playlists..." class="bg-transparent border-none outline-none flex-1 text-[var(--text-main)]">
-                        </div>
+                </div>
+            </section>
+            <section class="view" id="searchView">
+                <div class="mb-10 flex flex-col items-center">
+                    <h1 class="text-5xl font-black mb-8 tracking-tighter text-[var(--text-main)]">What do you want to listen to?</h1>
+                    <div class="search-box">
+                        <i class="fas fa-search text-[var(--text-muted)] opacity-40"></i>
+                        <input type="text" id="searchInput" placeholder="Search for songs, artists, or albums" class="bg-transparent border-none outline-none flex-1 text-[var(--text-main)]">
                     </div>
-
-                    <div id="searchResults" class="hidden">
-                        <div class="flex gap-4 mb-6 border-b border-[var(--border-main)] pb-3">
-                            <button id="tab-songs" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full bg-accent-indigo text-white" onclick="switchSearchTab('songs')">Songs</button>
-                            <button id="tab-playlists" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)]" onclick="switchSearchTab('playlists')">Playlists / Albums</button>
-                            <button id="tab-artists" class="search-tab-btn font-bold text-sm px-4 py-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)]" onclick="switchSearchTab('artists')">Artists</button>
-                        </div>
-
-                        <div id="tracksTab" class="search-tab-content active">
-                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="searchGrid"></div>
-                        </div>
-
-                        <div id="playlistsTab" class="search-tab-content">
-                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="playlistsSearchGrid"></div>
-                        </div>
-
-                        <div id="artistsTab" class="search-tab-content">
-                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="artistsSearchGrid"></div>
-                        </div>
-
-                        <div id="searchPagination" class="hidden flex justify-center items-center gap-6 py-10">
-                            <button id="prevPageBtn" class="btn-niobium opacity-50 hover:opacity-100 transition-opacity">Previous</button>
-                            <span id="pageIndicator" class="text-sm font-bold text-[var(--text-main)] opacity-60">Page 1</span>
-                            <button id="nextPageBtn" class="btn-niobium">Next</button>
-                        </div>
-                        <div id="searchLoader" class="col-span-full text-center py-8 hidden">
-                            <i class="fas fa-circle-notch fa-spin text-3xl text-accent-indigo"></i>
-                        </div>
+                </div>
+                <div id="searchResults" class="hidden">
+                    <div id="tracksTab" class="search-tab-content active">
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="searchGrid"></div>
                     </div>
-
-                    <div id="browseCategories">
-                        <h2 class="text-xl font-bold mb-6 text-[var(--text-main)]">Browse all genres</h2>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="categoriesGrid"></div>
-                    </div>
-                </section>
-
-                <!-- Library View -->
-                <section class="view" id="libraryView">
-                    <h1 class="text-4xl font-bold mb-10 text-[var(--text-main)]">Your Library</h1>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="libraryContent"></div>
-                </section>
-
-                <!-- Favorites View -->
-                <section class="view" id="favoritesView">
-                    <div class="flex flex-col md:flex-row items-end gap-8 mb-10">
-                        <div class="w-56 h-56 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl flex items-center justify-center shadow-2xl">
-                            <i class="fas fa-heart text-white text-7xl animate-pulse"></i>
-                        </div>
-                        <div class="flex-1">
-                            <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] opacity-60">Playlist</span>
-                            <h1 class="text-7xl font-black tracking-tighter mb-4 text-[var(--text-main)]">Liked Songs</h1>
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-[var(--text-main)] opacity-80" id="likedSongsCount">0 songs</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-6 mb-8 border-b border-[var(--border-main)] pb-8">
-                        <button class="w-16 h-16 bg-[var(--accent-color)] rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform" onclick="playAllFavorites()">
-                            <i class="fas fa-play text-white text-xl"></i>
+                    <div id="searchPagination" class="hidden flex justify-center items-center gap-6 py-10">
+                        <button id="prevPageBtn" class="btn-niobium opacity-50 hover:opacity-100 transition-opacity">
+                            <i class="fas fa-chevron-left mr-2"></i> Previous
+                        </button>
+                        <span id="pageIndicator" class="text-sm font-bold text-[var(--text-main)] opacity-60">Page 1</span>
+                        <button id="nextPageBtn" class="btn-niobium">
+                            Next <i class="fas fa-chevron-right ml-2"></i>
                         </button>
                     </div>
-                    <div id="favoritesList" class="space-y-2"></div>
-                </section>
-
-                <!-- Settings View -->
-                <section class="view" id="settingsView">
-                    <h1 class="text-4xl font-bold mb-10 text-[var(--text-main)]">Settings</h1>
-                    
-                    <div class="max-w-2xl space-y-8">
-                         <div class="bg-card-dark p-6 rounded-2xl border border-[var(--border-main)]">
-                            <h2 class="text-xl font-semibold mb-4 text-[var(--text-main)]">Interface Mode</h2>
-                            <p class="text-xs text-[var(--text-muted)] mb-6">Switch between Light and Dark Neobrutalist interfaces</p>
-                            <div class="flex gap-4">
-                                <button onclick="setThemeMode('light')" class="btn-niobium">Light Mode</button>
-                                <button onclick="setThemeMode('dark')" class="btn-niobium">Dark Mode</button>
-                            </div>
-                        </div>
-
-                        <div class="bg-card-dark p-6 rounded-2xl border border-[var(--border-main)]">
-                            <h2 class="text-xl font-semibold mb-4 text-[var(--text-main)]">Accent Theme</h2>
-                            <p class="text-xs text-[var(--text-muted)] mb-6">Choose your preferred highlight color for the interface</p>
-                            <div class="flex gap-4">
-                                <button onclick="setThemeAccent('violet', '#8b5cf6', 'rgba(139,92,246,0.3)')" class="w-10 h-10 rounded-full bg-violet-500 border-2 border-transparent focus:border-white transition-all"></button>
-                                <button onclick="setThemeAccent('indigo', '#6366F1', 'rgba(99,102,241,0.3)')" class="w-10 h-10 rounded-full bg-indigo-500 border-2 border-transparent focus:border-white transition-all"></button>
-                                <button onclick="setThemeAccent('emerald', '#10B981', 'rgba(16,185,129,0.3)')" class="w-10 h-10 rounded-full bg-emerald-500 border-2 border-transparent focus:border-white transition-all"></button>
-                                <button onclick="setThemeAccent('sunset', '#f59e0b', 'rgba(245,158,11,0.3)')" class="w-10 h-10 rounded-full bg-amber-500 border-2 border-transparent focus:border-white transition-all"></button>
-                                <button onclick="setThemeAccent('cyan', '#06b6d4', 'rgba(6,182,212,0.3)')" class="w-10 h-10 rounded-full bg-cyan-500 border-2 border-transparent focus:border-white transition-all"></button>
-                            </div>
-                        </div>
-
-                        <div class="bg-card-dark p-6 rounded-2xl border border-[var(--border-main)]">
-                            <h2 class="text-xl font-semibold mb-4 text-[var(--text-main)]">Backup & Restore</h2>
-                            <p class="text-xs text-[var(--text-muted)] mb-6">Export your library data (liked songs and playlists) or restore from file</p>
-                            <div class="flex gap-4">
-                                <button onclick="exportLibraryData()" class="btn-niobium flex items-center gap-2">
-                                    <i class="fas fa-file-export"></i> Export Library
-                                </button>
-                                <button onclick="document.getElementById('importLibraryInput').click()" class="btn-niobium flex items-center gap-2">
-                                    <i class="fas fa-file-import"></i> Import Library
-                                </button>
-                                <input type="file" id="importLibraryInput" accept=".json" class="hidden" onchange="importLibraryData(event)">
-                            </div>
+                    <div id="searchLoader" class="col-span-full text-center py-8 hidden">
+                        <i class="fas fa-circle-notch fa-spin text-3xl text-accent-indigo"></i>
+                    </div>
+                </div>
+                <div id="browseCategories">
+                    <h2 class="text-xl font-bold mb-6 text-[var(--text-main)]">Browse all</h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+                </div>
+            </section>
+            <section class="view" id="libraryView">
+                <h1 class="text-4xl font-bold mb-10 text-[var(--text-main)]">Your Library</h1>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" id="libraryContent">
+                </div>
+            </section>
+            <section class="view" id="favoritesView">
+                <div class="flex flex-col md:flex-row items-end gap-8 mb-10">
+                    <div class="w-56 h-56 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl flex items-center justify-center shadow-2xl">
+                        <i class="fas fa-heart text-white text-7xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] opacity-60">Playlist</span>
+                        <h1 class="text-7xl font-black tracking-tighter mb-4 text-white">Liked Songs</h1>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white opacity-80" id="likedSongsCount">0 songs</span>
                         </div>
                     </div>
-                </section>
-
-                <div id="dynamicView" class="view"></div>
-            </main>
-
-            <footer class="now-playing-bar select-none">
-                <div class="flex items-center gap-4 min-w-0">
-                    <div class="w-14 h-14 bg-[var(--bg-card)] rounded-xl overflow-hidden border border-[var(--border-main)] flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" onclick="toggleFullscreenPlayer()">
-                        <img id="currentArtwork" src="" class="w-full h-full object-cover hidden">
-                        <div id="artworkPlaceholder" class="w-full h-full flex items-center justify-center">
-                            <i class="fas fa-music text-[var(--text-muted)] opacity-40"></i>
-                        </div>
-                    </div>
-                    <div class="min-w-0">
-                        <div id="currentTrackName" class="text-sm font-bold text-[var(--text-main)] truncate">Not Playing</div>
-                        <div id="currentArtistName" class="text-xs text-[var(--text-muted)] opacity-60 truncate">Select a track</div>
-                    </div>
-                    <button id="likeButton" class="text-[var(--text-muted)] opacity-60 hover:text-[var(--text-main)] transition-colors ml-2">
-                        <i class="far fa-heart"></i>
+                </div>
+                <div class="flex items-center gap-6 mb-8 border-b border-[var(--border-main)] pb-8">
+                    <button class="w-16 h-16 bg-[var(--accent-color)] rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform" onclick="playAllFavorites()">
+                        <i class="fas fa-play text-white text-xl"></i>
                     </button>
                 </div>
-
-                <div class="flex flex-col items-center gap-2 w-full max-w-2xl justify-self-center">
-                    <div class="flex items-center gap-6">
-                        <button class="player-btn text-lg" id="shuffleButton"><i class="fas fa-shuffle"></i></button>
-                        <button class="player-btn text-xl" id="prevButton"><i class="fas fa-step-backward"></i></button>
-                        <button class="w-10 h-10 bg-[var(--text-main)] text-[var(--bg-page)] rounded-full flex items-center justify-center hover:scale-105 transition-transform" id="playPauseButton">
-                            <i class="fas fa-play text-black"></i>
-                        </button>
-                        <button class="player-btn text-xl" id="nextButton"><i class="fas fa-step-forward"></i></button>
-                        <button class="player-btn text-lg" id="repeatButton"><i class="fas fa-repeat"></i></button>
-                    </div>
-                    <div class="flex items-center gap-3 w-full text-xs">
-                        <span id="currentTimeLabel">0:00</span>
-                        <div class="progress-bar flex-1" id="progressTrack">
-                            <div class="progress-bar-fill" id="progressBarFill"></div>
-                        </div>
-                        <span id="durationLabel">0:00</span>
+                <div id="favoritesList" class="space-y-2"></div>
+            </section>
+            <div id="dynamicView" class="view"></div>
+        </main>
+        <footer class="now-playing-bar">
+            <div class="flex items-center gap-4 min-w-0">
+                <div class="w-14 h-14 bg-[var(--bg-card)] rounded-xl overflow-hidden border border-[var(--border-main)] flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" onclick="toggleFullscreenPlayer()">
+                    <img id="currentArtwork" src="" class="w-full h-full object-cover hidden">
+                    <div id="artworkPlaceholder" class="w-full h-full flex items-center justify-center">
+                        <i class="fas fa-music text-[var(--text-muted)] opacity-40"></i>
                     </div>
                 </div>
-
-                <div class="flex items-center gap-3 justify-end w-full max-w-[200px] justify-self-end">
-                    <button class="player-btn text-md" id="lyricsToggleButton" onclick="toggleFullscreenPlayer('lyrics')"><i class="fas fa-quote-right"></i></button>
-                    <i class="fas fa-volume-up text-sm opacity-60"></i>
-                    <div class="w-24 h-1.5 bg-[var(--border-main)] rounded-full relative overflow-hidden" id="volumeTrack">
+                <div class="min-w-0">
+                    <div id="currentTrackName" class="text-sm font-bold text-[var(--text-main)] truncate">Not Playing</div>
+                    <div id="currentArtistName" class="text-xs text-[var(--text-muted)] opacity-60 truncate">Select a track</div>
+                </div>
+                <button id="likeButton" class="text-[var(--text-muted)] opacity-60 hover:text-[var(--text-main)] transition-colors ml-2">
+                    <i class="far fa-heart"></i>
+                </button>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+                <div class="flex items-center gap-6">
+                    <button class="player-btn text-lg" id="shuffleButton"><i class="fas fa-shuffle"></i></button>
+                    <button class="player-btn text-xl" id="prevButton"><i class="fas fa-step-backward"></i></button>
+                    <button class="w-10 h-10 bg-[var(--text-main)] text-[var(--bg-page)] rounded-full flex items-center justify-center hover:scale-105 transition-transform" id="playPauseButton">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="player-btn text-xl" id="nextButton"><i class="fas fa-step-forward"></i></button>
+                    <button class="player-btn text-lg" id="repeatButton"><i class="fas fa-repeat"></i></button>
+                </div>
+                <div class="w-full flex items-center gap-3 text-[10px] font-bold text-[var(--text-muted)] opacity-60">
+                    <span id="currentTimeLabel">0:00</span>
+                    <div class="progress-bar flex-1" id="progressTrack">
+                        <div class="progress-bar-fill" id="progressBarFill"></div>
+                    </div>
+                    <span id="durationLabel">0:00</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-4">
+                <div class="flex items-center gap-2 group">
+                    <i class="fas fa-volume-up text-[var(--text-muted)] opacity-60 group-hover:text-[var(--text-main)] transition-colors"></i>
+                    <div class="w-24 h-1 bg-[var(--border-main)] rounded-full cursor-pointer relative">
                         <input type="range" id="volumeSlider" min="0" max="100" value="70" class="absolute inset-0 opacity-0 cursor-pointer z-10">
                         <div class="bg-[var(--text-muted)] opacity-60 h-full rounded-full" id="volumeBarFill" style="width: 70%;"></div>
                     </div>
                 </div>
-            </footer>
-        </div>
+            </div>
+        </footer>
     </div>
-
-    <!-- Modals -->
     <div id="createPlaylistModal" class="modal-overlay">
         <div class="modal-content">
-            <h2 class="text-2xl font-bold mb-6 text-[var(--text-main)]">New Playlist</h2>
+            <h2 class="text-2xl font-bold mb-6 text-[var(--text-main)]">Create New Playlist</h2>
             <div class="space-y-4 mb-8">
                 <div>
                     <label class="text-xs font-bold text-[var(--text-muted)] opacity-60 uppercase tracking-widest mb-2 block">Name</label>
@@ -851,12 +660,59 @@
                 </div>
             </div>
             <div class="flex justify-end gap-3">
-                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-[var(--text-main)] transition-colors" onclick="hideCreatePlaylistModal()">Cancel</button>
+                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors" onclick="hideCreatePlaylistModal()">Cancel</button>
                 <button class="btn-niobium" id="savePlaylistBtn">Create Playlist</button>
             </div>
         </div>
     </div>
-
+    <div id="fullscreenPlayer" class="fixed inset-0 bg-black z-[100000] hidden flex-col px-8 py-8 lg:px-16 transition-all duration-500 overflow-hidden text-white keep-white" style="--tint-color: #ffffff; --progress-bg: rgba(255,255,255,0.1);">
+        <div id="fsBackground" class="absolute inset-0 z-[-1] opacity-60 transition-all duration-1000"></div>
+        <div class="absolute inset-0 bg-black/25 z-[-1]"></div>
+        <div class="absolute inset-0 backdrop-blur-[120px] z-[-1]"></div>
+        <div id="fsScaleWrapper" class="flex flex-col h-full w-full transition-transform duration-300 origin-center relative">
+            <div class="absolute top-0 left-0 p-4 lg:p-8 z-20">
+                <button onclick="toggleFullscreenPlayer()" class="text-3xl lg:text-4xl hover:scale-110 transition-transform" style="color: #ffffff !important">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center max-w-7xl mx-auto w-full relative z-10 px-4">
+                <div class="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-24 w-full">
+                    <div class="w-full max-w-[400px] lg:max-w-[550px] aspect-square rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex-shrink-0">
+                        <img id="fsArtwork" src="" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex flex-col w-full max-w-2xl">
+                        <div class="w-full mb-8 lg:mb-12 text-center lg:text-left">
+                            <h1 id="fsTrackName" class="text-4xl lg:text-7xl font-black tracking-tighter mb-2 lg:mb-4" style="color: #ffffff !important">Not Playing</h1>
+                            <p id="fsArtistName" class="text-xl lg:text-3xl font-medium opacity-70" style="color: #ffffff !important">Select a track</p>
+                        </div>
+                        <div class="w-full flex flex-col items-center lg:items-start gap-8 lg:gap-12">
+                            <div class="w-full flex flex-col gap-3">
+                                <div class="progress-bar w-full h-2 lg:h-3 rounded-full overflow-hidden cursor-pointer" id="fsProgressTrack" style="background: var(--progress-bg)">
+                                    <div class="progress-bar-fill h-full transition-all duration-150" id="fsProgressBarFill" style="background: #ffffff !important"></div>
+                                </div>
+                                <div class="flex justify-between text-sm lg:text-base font-bold opacity-50" style="color: #ffffff !important">
+                                    <span id="fsCurrentTime">0:00</span>
+                                    <span id="fsDuration">0:00</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center lg:justify-start gap-10 lg:gap-16 w-full">
+                                <button class="player-btn text-2xl lg:text-3xl opacity-70 hover:opacity-100 transition-all" id="fsShuffle"><i class="fas fa-shuffle"></i></button>
+                                <button class="player-btn text-3xl lg:text-5xl hover:scale-110 transition-all" id="fsPrev"><i class="fas fa-step-backward"></i></button>
+                                <button class="w-20 h-20 lg:w-28 lg:h-28 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-xl" id="fsPlayPause">
+                                    <i class="fas fa-play text-4xl lg:text-6xl ml-1 text-black"></i>
+                                </button>
+                                <button class="player-btn text-3xl lg:text-5xl hover:scale-110 transition-all" id="fsNext"><i class="fas fa-step-forward"></i></button>
+                                <div class="flex items-center gap-10 lg:gap-16">
+                                    <button class="player-btn text-2xl lg:text-3xl opacity-70 hover:opacity-100 transition-all" id="fsRepeat"><i class="fas fa-repeat"></i></button>
+                                    <button class="player-btn text-2xl lg:text-3xl opacity-70 hover:opacity-100 transition-all" id="fsLike"><i class="far fa-heart"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="editPlaylistModal" class="modal-overlay">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-6 text-[var(--text-main)]">Edit Playlist</h2>
@@ -872,94 +728,22 @@
                 </div>
             </div>
             <div class="flex justify-end gap-3">
-                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-[var(--text-main)] transition-colors" onclick="hideEditPlaylistModal()">Cancel</button>
+                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors" onclick="hideEditPlaylistModal()">Cancel</button>
                 <button class="btn-niobium" id="confirmEditPlaylistBtn">Save Changes</button>
             </div>
         </div>
     </div>
-
     <div id="addToPlaylistModal" class="modal-overlay">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-6 text-[var(--text-main)]">Add to Playlist</h2>
-            <div id="playlistSelectionList" class="space-y-2 max-h-64 overflow-y-auto custom-scroll mb-8"></div>
+            <div id="playlistSelectionList" class="space-y-2 max-h-64 overflow-y-auto custom-scroll mb-8">
+            </div>
             <div class="flex justify-end gap-3">
-                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-[var(--text-main)] transition-colors" onclick="hideAddToPlaylistModal()">Cancel</button>
+                <button class="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors" onclick="hideAddToPlaylistModal()">Cancel</button>
             </div>
         </div>
     </div>
-
-    <!-- Fullscreen Player -->
-    <div id="fullscreenPlayer" class="fixed inset-0 bg-black z-[100000] hidden flex-col px-8 py-8 lg:px-16 transition-all duration-500 overflow-hidden text-white keep-white" style="--tint-color: #ffffff; --progress-bg: rgba(255,255,255,0.1);">
-        <div id="fsBackground" class="absolute inset-0 z-[-1] opacity-60 transition-all duration-1000"></div>
-        
-        <header class="flex justify-between items-center w-full mb-6">
-            <button class="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors" onclick="toggleFullscreenPlayer()">
-                <i class="fas fa-chevron-down text-lg"></i>
-            </button>
-            <span class="text-xs font-bold uppercase tracking-widest opacity-60">Now Playing</span>
-            <div class="w-12"></div>
-        </header>
-
-        <div id="fsScaleWrapper" class="flex flex-col h-full w-full transition-transform duration-300 origin-center relative">
-            <div class="grid lg:grid-cols-2 gap-12 lg:gap-24 items-center justify-center flex-1 my-auto max-w-6xl mx-auto w-full">
-                <div class="flex flex-col items-center justify-center">
-                    <div class="w-64 h-64 lg:w-96 lg:h-96 rounded-3xl overflow-hidden shadow-2xl border border-white/10 relative">
-                        <img id="fsArtwork" src="" class="w-full h-full object-cover">
-                    </div>
-                </div>
-
-                <div class="flex flex-col items-center lg:items-start text-center lg:text-left justify-center w-full">
-                    <div class="mb-8 w-full">
-                        <h1 id="fsTrackName" class="text-4xl lg:text-7xl font-black tracking-tighter mb-2 lg:mb-4" style="color: #ffffff !important">Not Playing</h1>
-                        <p id="fsArtistName" class="text-xl lg:text-3xl font-medium opacity-70" style="color: #ffffff !important">Select a track</p>
-                    </div>
-
-                    <div class="w-full flex justify-center items-center h-24 mb-6">
-                        <canvas id="visualizerCanvas" class="w-full max-w-lg h-16 opacity-80"></canvas>
-                    </div>
-
-                    <div class="w-full flex flex-col gap-6 mb-10">
-                        <div class="flex flex-col gap-3 w-full">
-                            <div class="progress-bar w-full h-2 lg:h-3 rounded-full overflow-hidden cursor-pointer" id="fsProgressTrack" style="background: var(--progress-bg)">
-                                <div class="progress-bar-fill h-full transition-all duration-150" id="fsProgressBarFill" style="background: #ffffff !important"></div>
-                            </div>
-                            <div class="flex justify-between text-sm lg:text-base font-bold opacity-50" style="color: #ffffff !important">
-                                <span id="fsCurrentTime">0:00</span>
-                                <span id="fsDuration">0:00</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-center lg:justify-start gap-10 lg:gap-16 w-full">
-                            <button class="player-btn text-2xl lg:text-3xl opacity-70 hover:opacity-100 transition-all" id="fsShuffle"><i class="fas fa-shuffle"></i></button>
-                            <button class="player-btn text-3xl lg:text-5xl hover:scale-110 transition-all" id="fsPrev"><i class="fas fa-step-backward"></i></button>
-                            <button class="w-20 h-20 lg:w-28 lg:h-28 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-xl" id="fsPlayPause">
-                                <i class="fas fa-play text-4xl lg:text-6xl ml-1 text-black"></i>
-                            </button>
-                            <button class="player-btn text-3xl lg:text-5xl hover:scale-110 transition-all" id="fsNext"><i class="fas fa-step-forward"></i></button>
-                            <div class="flex items-center gap-10 lg:gap-16">
-                                <button class="player-btn text-2xl lg:text-3xl opacity-70 hover:opacity-100 transition-all" id="fsRepeat"><i class="fas fa-repeat"></i></button>
-                                <button class="player-btn text-2xl lg:text-3xl opacity-70 hover:opacity-100 transition-all" id="fsLike"><i class="far fa-heart"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="fsLyricsPanel" class="absolute inset-y-0 right-0 w-full lg:w-1/2 bg-black/90 backdrop-blur-md translate-x-full transition-transform duration-500 z-50 p-12 overflow-y-auto flex flex-col">
-            <div class="flex justify-between items-center mb-10">
-                <h2 class="text-3xl font-black tracking-tight text-white">Lyrics</h2>
-                <button class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors" onclick="toggleFsLyrics(false)">
-                    <i class="fas fa-times text-lg"></i>
-                </button>
-            </div>
-            <div id="fsLyricsList" class="flex-1 flex flex-col justify-center py-20 font-bold tracking-tight select-text overflow-y-auto custom-scroll">
-                <div class="text-gray-500 text-lg">No lyrics available.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cropper Modal -->
+    <div id="toastContainer" class="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100000] flex flex-col gap-2 pointer-events-none"></div>
     <div id="cropperModal">
         <div id="cropperContent">
             <div class="flex justify-between items-center p-6 border-b border-[var(--border-main)] bg-[var(--bg-secondary)]">
@@ -981,15 +765,11 @@
             </div>
         </div>
     </div>
-    
     <input type="file" id="playlistCoverInput" accept="image/*" class="hidden">
     <input type="hidden" id="uploadPlaylistId">
-
     <div id="audioElement"></div>
-    <div id="toastContainer" class="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100000] flex flex-col gap-2 pointer-events-none"></div>
-
-    <script src="/db.js"></script>
-    <script src="/music.js"></script>
+    <script src="/VELIUM/db.js"></script>
+    <script src="/VELIUM/music.js"></script>
 </body>
 </html>
 <!-- Made with ❤️ from 4SP -->
