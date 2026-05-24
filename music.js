@@ -226,41 +226,6 @@ async function silentPreloadDurations(tracks) {
         } catch (e) { console.warn("Silent preload failed for track", track.title, e); }
     }
 }
-window.toggleLikeTrack = async function(track, btnEl) {
-    const trackUid = getTrackUid(track);
-    const index = favorites.findIndex(t => getTrackUid(t) === trackUid);
-    const isLiking = index === -1;
-    if (isLiking) {
-        favorites.push(track);
-        if (btnEl) {
-            btnEl.classList.add('active');
-            const icon = btnEl.querySelector('i');
-            if (icon) icon.className = 'fas text-red-500 fa-heart';
-        }
-    } else {
-        favorites.splice(index, 1);
-        if (btnEl) {
-            btnEl.classList.remove('active');
-            const icon = btnEl.querySelector('i');
-            if (icon) icon.className = 'far fa-heart';
-        }
-    }
-    updateLikeButtonStatus();
-    if (document.getElementById('favoritesView').classList.contains('active')) renderFavorites();
-    try {
-        if (isLiking) {
-            if (track.artwork_url && !track.local_artwork) {
-                const b64 = await urlToBase64(track.artwork_url);
-                if (b64) {
-                    track.local_artwork = b64;
-                    const favIdx = favorites.findIndex(t => getTrackUid(t) === trackUid);
-                    if (favIdx > -1) favorites[favIdx].local_artwork = b64;
-                }
-            }
-        }
-        await saveLibraryData();
-    } catch (e) { console.error("Error saving like state", e); }
-};
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -445,6 +410,27 @@ function setupEventListeners() {
         hideCreatePlaylistModal();
     });
     document.getElementById('confirmEditPlaylistBtn').addEventListener('click', confirmEditPlaylist);
+    
+    document.getElementById('playlistCoverInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const base64 = evt.target.result;
+            const artPreview = document.getElementById('editPlaylistArtPreview');
+            const artPlaceholder = document.getElementById('editPlaylistArtPlaceholder');
+            const removeBtn = document.getElementById('removeArtBtn');
+            
+            artPreview.src = base64;
+            artPreview.style.display = 'block';
+            artPlaceholder.style.display = 'none';
+            removeBtn.classList.add('show');
+            
+            renderColorPicker(document.getElementById('editPlaylistColor').value, base64);
+        };
+        reader.readAsDataURL(file);
+    });
+
     document.getElementById('fsPlayPause').addEventListener('click', togglePlayPause);
     document.getElementById('fsNext').addEventListener('click', playNext);
     document.getElementById('fsPrev').addEventListener('click', playPrev);
@@ -1160,7 +1146,15 @@ function saveToStorage(key, value) { localStorage.setItem(`velium_v2_${key}`, JS
 window.toggleLikeTrack = async function(track, btnEl) {
     const trackUid = getTrackUid(track);
     const index = favorites.findIndex(t => getTrackUid(t) === trackUid);
-    if (index > -1) {
+    const isLiking = index === -1;
+    if (isLiking) {
+        favorites.push(track);
+        if (btnEl) {
+            btnEl.classList.add('active');
+            const icon = btnEl.querySelector('i');
+            if (icon) icon.className = 'fas text-red-500 fa-heart';
+        }
+    } else {
         favorites.splice(index, 1);
         if (btnEl) {
             btnEl.classList.remove('active');
@@ -1168,17 +1162,22 @@ window.toggleLikeTrack = async function(track, btnEl) {
             if (icon) icon.className = 'far fa-heart';
         }
     }
-    else {
-        favorites.push(track);
-        if (btnEl) {
-            btnEl.classList.add('active');
-            const icon = btnEl.querySelector('i');
-            if (icon) icon.className = 'fas text-red-500 fa-heart';
-        }
-    }
     await saveLibraryData();
     updateLikeButtonStatus();
+    renderSidebarPlaylists();
     if (document.getElementById('favoritesView').classList.contains('active')) renderFavorites();
+    
+    if (isLiking && track.artwork_url && !track.local_artwork) {
+        try {
+            const b64 = await urlToBase64(track.artwork_url);
+            if (b64) {
+                track.local_artwork = b64;
+                const favIdx = favorites.findIndex(t => getTrackUid(t) === trackUid);
+                if (favIdx > -1) favorites[favIdx].local_artwork = b64;
+                await saveLibraryData();
+            }
+        } catch (e) {}
+    }
 };
 async function toggleLike() {
     if (!currentTrack) return;
@@ -1204,11 +1203,27 @@ function updateLikeButtonStatus() {
 function renderSidebarPlaylists() {
     const container = document.getElementById('sidebar-playlists'); if (!container) return;
     container.innerHTML = '';
+    
+    // Liked Songs entry
+    const likedItem = document.createElement('div');
+    likedItem.className = 'playlist-item';
+    likedItem.innerHTML = `
+        <div class="pl-img" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-heart" style="color: white; font-size: 16px;"></i>
+        </div>
+        <div class="pl-info">
+            <div class="pl-name truncate" style="max-width: 140px;">Liked Songs</div>
+            <div class="pl-type">Playlist • ${favorites.length} songs</div>
+        </div>
+    `;
+    likedItem.onclick = () => switchView('favorites');
+    container.appendChild(likedItem);
+
     playlists.forEach(pl => {
         const item = document.createElement('div');
         item.className = 'playlist-item';
         item.innerHTML = `
-            <div class="pl-img">${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width:100%; height:100%;">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color: var(--bg-highlight);"><i class="fa-solid fa-list" style="font-size:16px;"></i></div>`}</div>
+            <div class="pl-img" style="${pl.color ? `background: linear-gradient(135deg, ${pl.color}, var(--bg-highlight));` : ''}">${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width:100%; height:100%;">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color: var(--bg-highlight);"><i class="fa-solid fa-list" style="font-size:16px;"></i></div>`}</div>
             <div class="pl-info">
                 <div class="pl-name truncate" style="max-width: 140px;">${escapeHtml(pl.name)}</div>
                 <div class="pl-type">Playlist • ${pl.tracks.length} songs</div>
@@ -1247,8 +1262,9 @@ function renderLibrary() {
 async function loadPlaylistView(playlistId) {
     const pl = playlists.find(p => p.id === playlistId); if (!pl) return;
     switchView('dynamic'); const container = document.getElementById('dynamicView');
+    const playlistColor = pl.color || '#4f46e5';
     container.innerHTML = `
-        <header class="hero-header" style="background: linear-gradient(to bottom, #4f46e5 0%, var(--bg-elevated) 100%);">
+        <header class="hero-header" style="background: linear-gradient(to bottom, ${playlistColor} 0%, var(--bg-elevated) 100%);">
             <div class="artist-img" style="border-radius: 0% !important; position: relative;">
                 ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-music"></i>`}
                 <button class="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 rounded-full p-2 text-white text-sm" onclick="showPlaylistCoverUploadModal('${pl.id}')"><i class="fas fa-camera"></i></button>
@@ -1284,12 +1300,17 @@ function createPlaylist(name, description = '', cover_url = '') {
     const newPlaylist = { id: Date.now().toString(), name: name || 'My Playlist', description: description, tracks: [], cover_url: cover_url, createdAt: new Date().toISOString() };
     playlists.push(newPlaylist); saveLibraryData(); renderSidebarPlaylists(); renderLibrary(); return newPlaylist.id;
 }
-function updatePlaylist(playlistId, name, description, cover_url) {
+function updatePlaylist(playlistId, name, description, cover_url, color) {
     const plIndex = playlists.findIndex(p => p.id === playlistId);
     if (plIndex > -1) {
-        playlists[plIndex].name = name; playlists[plIndex].description = description; playlists[plIndex].cover_url = cover_url;
+        playlists[plIndex].name = name;
+        playlists[plIndex].description = description;
+        playlists[plIndex].cover_url = cover_url;
+        if (color) playlists[plIndex].color = color;
         saveLibraryData(); renderSidebarPlaylists(); renderLibrary();
-        if (currentDynamicPlaylist === playlists[plIndex].tracks) loadPlaylistView(playlistId);
+        if (document.getElementById('dynamicView').classList.contains('active')) {
+            loadPlaylistView(playlistId);
+        }
         return true;
     }
     return false;
@@ -1303,10 +1324,121 @@ function deletePlaylist(playlistId) {
 }
 function showCreatePlaylistModal() { document.getElementById('createPlaylistModal').style.display = 'flex'; document.getElementById('playlistNameInput').value = ''; document.getElementById('playlistDescInput').value = ''; }
 function hideCreatePlaylistModal() { document.getElementById('createPlaylistModal').style.display = 'none'; }
-function showEditPlaylistModal(playlistId) { const pl = playlists.find(p => p.id === playlistId); if (!pl) return; document.getElementById('editPlaylistModal').style.display = 'flex'; document.getElementById('editPlaylistId').value = pl.id; document.getElementById('editPlaylistNameInput').value = pl.name; document.getElementById('editPlaylistDescInput').value = pl.description; }
+function showEditPlaylistModal(playlistId) {
+    const pl = playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+    const modal = document.getElementById('editPlaylistModal');
+    modal.style.display = 'flex';
+    document.getElementById('editPlaylistId').value = pl.id;
+    document.getElementById('editPlaylistNameInput').value = pl.name;
+    document.getElementById('editPlaylistDescInput').value = pl.description;
+    document.getElementById('editPlaylistColor').value = pl.color || '#4f46e5';
+    
+    const artPreview = document.getElementById('editPlaylistArtPreview');
+    const artPlaceholder = document.getElementById('editPlaylistArtPlaceholder');
+    const removeBtn = document.getElementById('removeArtBtn');
+    
+    if (pl.cover_url) {
+        artPreview.src = pl.cover_url;
+        artPreview.style.display = 'block';
+        artPlaceholder.style.display = 'none';
+        removeBtn.classList.add('show');
+    } else {
+        artPreview.src = '';
+        artPreview.style.display = 'none';
+        artPlaceholder.style.display = 'flex';
+        removeBtn.classList.remove('show');
+    }
+    
+    renderColorPicker(pl.color || '#4f46e5', pl.cover_url);
+}
 function hideEditPlaylistModal() { document.getElementById('editPlaylistModal').style.display = 'none'; }
-async function confirmEditPlaylist() { const id = document.getElementById('editPlaylistId').value, name = document.getElementById('editPlaylistNameInput').value.trim(), desc = document.getElementById('editPlaylistDescInput').value.trim(); const pl = playlists.find(p => p.id === id); if (pl && name) { updatePlaylist(id, name, desc, pl.cover_url); hideEditPlaylistModal(); } }
+async function confirmEditPlaylist() {
+    const id = document.getElementById('editPlaylistId').value;
+    const name = document.getElementById('editPlaylistNameInput').value.trim();
+    const desc = document.getElementById('editPlaylistDescInput').value.trim();
+    const color = document.getElementById('editPlaylistColor').value;
+    const artPreview = document.getElementById('editPlaylistArtPreview');
+    const cover_url = artPreview.style.display === 'block' ? artPreview.src : '';
+    
+    if (name) {
+        updatePlaylist(id, name, desc, cover_url, color);
+        hideEditPlaylistModal();
+    }
+}
+
+function renderColorPicker(activeColor, imageUrl) {
+    const container = document.getElementById('editPlaylistColorPicker');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const defaultColors = ['#4f46e5', '#ef4444', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+    
+    const render = (allColors) => {
+        container.innerHTML = '';
+        const uniqueColors = [...new Set(allColors)];
+        uniqueColors.forEach(color => {
+            const opt = document.createElement('div');
+            opt.className = 'color-option' + (color.toLowerCase() === activeColor.toLowerCase() ? ' active' : '');
+            opt.style.backgroundColor = color;
+            opt.onclick = () => {
+                document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+                opt.classList.add('active');
+                document.getElementById('editPlaylistColor').value = color;
+            };
+            container.appendChild(opt);
+        });
+    };
+
+    if (imageUrl) {
+        sampleColorsFromImage(imageUrl).then(sampled => {
+            render([...sampled, ...defaultColors]);
+        });
+    } else {
+        render(defaultColors);
+    }
+}
+
+async function sampleColorsFromImage(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 50; canvas.height = 50;
+            ctx.drawImage(img, 0, 0, 50, 50);
+            const data = ctx.getImageData(0, 0, 50, 50).data;
+            const colorCounts = {};
+            for (let i = 0; i < data.length; i += 20) { 
+                const r = data[i], g = data[i+1], b = data[i+2];
+                const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+                colorCounts[hex] = (colorCounts[hex] || 0) + 1;
+            }
+            const sorted = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+            resolve(sorted.slice(0, 5).map(e => e[0]));
+        };
+        img.onerror = () => resolve([]);
+    });
+}
+
+window.removePlaylistArt = function() {
+    const artPreview = document.getElementById('editPlaylistArtPreview');
+    const artPlaceholder = document.getElementById('editPlaylistArtPlaceholder');
+    const removeBtn = document.getElementById('removeArtBtn');
+    artPreview.src = '';
+    artPreview.style.display = 'none';
+    artPlaceholder.style.display = 'flex';
+    removeBtn.classList.remove('show');
+    renderColorPicker(document.getElementById('editPlaylistColor').value, null);
+};
 function showAddToPlaylistModal(track) {
+    if (!track) track = currentTrack;
+    if (!track) {
+        showToast('Select a track first', 'info');
+        return;
+    }
     const modal = document.getElementById('addToPlaylistModal');
     const list = document.getElementById('playlistSelectionList');
     if (!modal || !list) return;
@@ -1317,8 +1449,9 @@ function showAddToPlaylistModal(track) {
         playlists.forEach(pl => {
             const item = document.createElement('div');
             item.className = 'flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 cursor-pointer border border-transparent hover:border-brand-border transition-all';
+            item.style.marginBottom = '8px';
             item.innerHTML = `
-                <div class="w-10 h-10 bg-card-dark rounded-lg flex items-center justify-center flex-shrink-0">
+                <div class="w-10 h-10 bg-card-dark rounded-lg flex items-center justify-center flex-shrink-0" style="${pl.color ? `background: linear-gradient(135deg, ${pl.color}, var(--bg-highlight));` : ''}">
                     ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover rounded-lg">` : `<i class="fas fa-list text-gray-700"></i>`}
                 </div>
                 <div class="flex-1 font-bold text-white truncate">${escapeHtml(pl.name)}</div>
@@ -1537,7 +1670,21 @@ function parseLyrics(lyricsText, duration) {
             item.time = (index / total) * duration;
         });
     }
-    return parsed;
+    
+    // Insert dots for long breaks
+    const finalParsed = [];
+    for (let i = 0; i < parsed.length; i++) {
+        finalParsed.push(parsed[i]);
+        if (i < parsed.length - 1 && parsed[i+1].time - parsed[i].time > 5) {
+            finalParsed.push({ 
+                time: parsed[i].time + 1, 
+                endTime: parsed[i+1].time - 0.5,
+                type: 'dots', 
+                text: '...' 
+            });
+        }
+    }
+    return finalParsed;
 }
 function updateLyricsSync(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
@@ -1550,34 +1697,45 @@ function updateLyricsSync(currentTime) {
         }
     }
     if (activeIndex === -1) return;
+
+    const updateUI = (container) => {
+        if (!container) return;
+        const lines = container.querySelectorAll('.lyric-line');
+        lines.forEach((line, index) => {
+            if (index === activeIndex) {
+                if (!line.classList.contains('active')) {
+                    line.classList.add('active');
+                    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                // Handle dots animation
+                const dots = line.querySelector('.lyric-dots');
+                if (dots) {
+                    dots.classList.add('active');
+                    const dotEls = dots.querySelectorAll('.lyric-dot');
+                    const startTime = parsedLyrics[index].time;
+                    const endTime = parsedLyrics[index].endTime;
+                    const duration = endTime - startTime;
+                    const progress = (currentTime - startTime) / duration;
+                    
+                    dotEls.forEach((dot, i) => {
+                        const threshold = (i + 1) / 4; // 3 dots, 4 segments
+                        if (progress > threshold) dot.classList.add('highlight');
+                        else dot.classList.remove('highlight');
+                    });
+                }
+            } else {
+                line.classList.remove('active');
+                const dots = line.querySelector('.lyric-dots');
+                if (dots) dots.classList.remove('active');
+            }
+        });
+    };
+
     const panelContent = document.getElementById('panelContent');
-    if (panelContent && currentPanel === 'lyrics') {
-        const lines = panelContent.querySelectorAll('.lyric-line');
-        lines.forEach((line, index) => {
-            if (index === activeIndex) {
-                if (!line.classList.contains('active')) {
-                    line.classList.add('active');
-                    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            } else {
-                line.classList.remove('active');
-            }
-        });
-    }
+    if (panelContent && currentPanel === 'lyrics') updateUI(panelContent);
     const fsLyrics = document.querySelector('.fs-lyrics-container');
-    if (fsLyrics && document.getElementById('fsPlayer').style.display === 'flex') {
-        const lines = fsLyrics.querySelectorAll('.lyric-line');
-        lines.forEach((line, index) => {
-            if (index === activeIndex) {
-                if (!line.classList.contains('active')) {
-                    line.classList.add('active');
-                    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            } else {
-                line.classList.remove('active');
-            }
-        });
-    }
+    if (fsLyrics && document.getElementById('fsPlayer').style.display === 'flex') updateUI(fsLyrics);
 }
 function seekToLyrics(time) {
     if (time === null || time === undefined) return;
@@ -1660,6 +1818,15 @@ async function fetchLyrics() {
             }
             parsedLyrics = parseLyrics(lyricsText, duration);
             const html = parsedLyrics.map(line => {
+                if (line.type === 'dots') {
+                    return `<div class="lyric-line" style="display: flex; justify-content: center; pointer-events: none;">
+                        <div class="lyric-dots">
+                            <div class="lyric-dot"></div>
+                            <div class="lyric-dot"></div>
+                            <div class="lyric-dot"></div>
+                        </div>
+                    </div>`;
+                }
                 if (line.time !== null && line.time !== undefined) {
                     return `<div class="lyric-line" onclick="seekToLyrics(${line.time})">${escapeHtml(line.text)}</div>`;
                 } else {

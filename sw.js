@@ -12,6 +12,21 @@ importScripts(__uv$config.sw || 'v-proxy/uv.sw.js');
 const uv = new UVServiceWorker();
 uv.bareClient = bareClient;
 
+const xor = {
+    decode(str) {
+        if (!str) return str;
+        let [input, ...search] = str.split('?');
+        return (
+            decodeURIComponent(input)
+                .split('')
+                .map((char, ind) =>
+                    ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char
+                )
+                .join('') + (search.length ? '?' + search.join('?') : '')
+        );
+    }
+};
+
 // Sync port from main thread
 self.addEventListener('message', (event) => {
     if (event.data && (event.data.type === 'baremuxinit' || event.data.type === 'baremuxready')) {
@@ -39,7 +54,7 @@ self.addEventListener('fetch', event => {
         (async () => {
             // Auto-proxy certain domains or encoded URLs even if prefix is missing
             const isEncoded = url.includes('hvtrs8');
-            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com');
+            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com') || url.includes('scdn.co') || url.includes('mzstatic.com');
             
             let targetEvent = event;
             let shouldRoute = uv.route(event);
@@ -63,12 +78,29 @@ self.addEventListener('fetch', event => {
             if (shouldRoute) {
                 // Optimization: If it's an image or audio request, bypass UV's heavy processing
                 // and fetch it directly through the Bare client for maximum speed.
-                const unroutedUrl = uv.unroute(targetEvent);
+                
+                let unroutedUrl = "";
+                try {
+                    // Manual XOR decode to be absolutely sure we get the original URL
+                    if (targetEvent.request.url.includes('hvtrs8')) {
+                        const encodedPart = targetEvent.request.url.split('hvtrs8')[1];
+                        unroutedUrl = xor.decode('hvtrs8' + encodedPart);
+                    } else {
+                        unroutedUrl = uv.unroute(targetEvent);
+                    }
+                } catch (e) {
+                    // Fallback to ultraviolet.sourceUrl if available
+                    try {
+                        const ultraviolet = new self.Ultraviolet(__uv$config);
+                        unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
+                    } catch (e2) {}
+                }
+
                 const isMedia = targetEvent.request.destination === 'image' || 
                                 targetEvent.request.destination === 'audio' ||
-                                (unroutedUrl && (unroutedUrl.includes('googleusercontent.com') || unroutedUrl.includes('ggpht.com') || unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)(\?|$)/i)));
+                                (unroutedUrl && (unroutedUrl.includes('googleusercontent.com') || unroutedUrl.includes('ggpht.com') || unroutedUrl.includes('saavncdn.com') || unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)(\?|$)/i)));
 
-                if (isMedia) {
+                if (isMedia && unroutedUrl) {
                     try {
                         const headers = {};
                         for (const [k, v] of targetEvent.request.headers.entries()) {
@@ -87,6 +119,11 @@ self.addEventListener('fetch', event => {
                             body: targetEvent.request.method === 'GET' || targetEvent.request.method === 'HEAD' ? null : await targetEvent.request.clone().arrayBuffer(),
                             redirect: 'follow'
                         });
+                        
+                        if (!response.ok && response.status !== 304) {
+                            throw new Error(`Bare fetch failed with status ${response.status}`);
+                        }
+                        
                         return response;
                     } catch (e) {
                         console.warn("Media direct fetch failed, falling back to UV:", e);
