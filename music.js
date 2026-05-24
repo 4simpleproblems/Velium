@@ -324,6 +324,7 @@ async function initApp() {
     });
     renderSidebarPlaylists();
     renderLibrary();
+    renderBrowseCategories();
     updateVolumeUI();
     initCropper();
     if (favorites.length > 0) {
@@ -843,9 +844,9 @@ function renderTrackGrid(tracks, container, parentList = null) {
         card.dataset.uid = trackUid;
         const artworkUrl = track.local_artwork || getProxyUrl(track.artwork_url);
         card.innerHTML = `
-            <div style="position: relative; overflow: hidden; border-radius: 8px; aspect-ratio: 1/1;">
-                <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy">
-                <button class="card-plus-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; border-radius: 50%; width: 30px; height: 30px; color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; cursor: pointer;" title="Add to Playlist">
+            <div style="position: relative; overflow: hidden; margin-bottom: 16px;">
+                <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy" style="margin-bottom: 0;">
+                <button class="card-plus-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; border-radius: 50% !important; width: 30px; height: 30px; color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; cursor: pointer;" title="Add to Playlist">
                     <i class="fa-solid fa-plus" style="font-size: 14px;"></i>
                 </button>
             </div>
@@ -854,9 +855,11 @@ function renderTrackGrid(tracks, container, parentList = null) {
         `;
         
         const plusBtn = card.querySelector('.card-plus-btn');
-        plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
-        card.onmouseenter = () => { plusBtn.style.opacity = '1'; };
-        card.onmouseleave = () => { plusBtn.style.opacity = '0'; };
+        if (plusBtn) {
+            plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
+            card.onmouseenter = () => { plusBtn.style.opacity = '1'; };
+            card.onmouseleave = () => { plusBtn.style.opacity = '0'; };
+        }
 
         card.addEventListener('click', () => {
             if (container.id === 'searchGrid') {
@@ -879,6 +882,41 @@ function renderTrackGrid(tracks, container, parentList = null) {
         container.appendChild(card);
     });
     observeImages(container);
+}
+
+function renderBrowseCategories() {
+    const grid = document.getElementById('categoriesGrid');
+    if (!grid) return;
+    
+    const categories = [
+        { title: 'Pop', color: '#E13300', icon: 'fa-music' },
+        { title: 'Hip-Hop', color: '#1E3264', icon: 'fa-microphone' },
+        { title: 'Rock', color: '#E91429', icon: 'fa-guitar' },
+        { title: 'Latin', color: '#E1118C', icon: 'fa-fire' },
+        { title: 'Dance/Electronic', color: '#D84000', icon: 'fa-bolt' },
+        { title: 'R&B', color: '#DC148C', icon: 'fa-heart' },
+        { title: 'Indie', color: '#608108', icon: 'fa-leaf' },
+        { title: 'Country', color: '#D84000', icon: 'fa-hat-cowboy' }
+    ];
+    
+    grid.innerHTML = '';
+    categories.forEach(cat => {
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        card.style.backgroundColor = cat.color;
+        card.innerHTML = `
+            <span class="category-title">${cat.title}</span>
+            <i class="fa-solid ${cat.icon} category-icon"></i>
+        `;
+        card.onclick = () => {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = cat.title;
+                handleSearch(cat.title);
+            }
+        };
+        grid.appendChild(card);
+    });
 }
 function renderPlaylistGrid(playlistsData, container) {
     if (!container) return;
