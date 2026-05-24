@@ -4,6 +4,7 @@ importScripts('baremux/index.js');
 const workerPath = location.origin + "/baremux/worker.js";
 const connection = new BareMux.WorkerConnection(workerPath);
 const bareClient = new BareMux.BareClient(connection);
+const ultraviolet = new self.Ultraviolet(__uv$config);
 importScripts(__uv$config.sw || 'uv/uv.sw.js');
 const uv = new UVServiceWorker();
 uv.bareClient = bareClient;
@@ -46,7 +47,7 @@ self.addEventListener('fetch', event => {
                 }
             }
             if (shouldRoute) {
-                const unroutedUrl = uv.unroute(targetEvent);
+                const unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
                 const isMedia = targetEvent.request.destination === 'image' ||
                                 targetEvent.request.destination === 'audio' ||
                                 unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i);

@@ -1578,3 +1578,41 @@ function renderQueue() {
     }
     panelContent.innerHTML = html;
 }
+let currentPanel = null;
+window.currentPanel = null;
+function togglePanel(type) {
+    const body = document.body;
+    const panelTitle = document.getElementById('panelTitle');
+    const btnLyrics = document.getElementById('btnLyrics');
+    const btnQueue = document.getElementById('btnQueue');
+    if (currentPanel === type) {
+        closePanel();
+        return;
+    }
+    if (btnLyrics) btnLyrics.classList.remove('active');
+    if (btnQueue) btnQueue.classList.remove('active');
+    if (type === 'lyrics') {
+        if (panelTitle) panelTitle.innerText = "Lyrics";
+        if (btnLyrics) btnLyrics.classList.add('active');
+        fetchLyrics();
+    } else if (type === 'queue') {
+        if (panelTitle) panelTitle.innerText = "Next Up";
+        if (btnQueue) btnQueue.classList.add('active');
+        renderQueue();
+    }
+    currentPanel = type;
+    window.currentPanel = type;
+    body.classList.add('panel-active');
+}
+function closePanel() {
+    const body = document.body;
+    const btnLyrics = document.getElementById('btnLyrics');
+    const btnQueue = document.getElementById('btnQueue');
+    body.classList.remove('panel-active');
+    currentPanel = null;
+    window.currentPanel = null;
+    if (btnLyrics) btnLyrics.classList.remove('active');
+    if (btnQueue) btnQueue.classList.remove('active');
+}
+window.togglePanel = togglePanel;
+window.closePanel = closePanel;
