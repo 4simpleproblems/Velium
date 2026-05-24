@@ -23,6 +23,16 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
+function cloneEventWithRequest(event, requestProxy) {
+    const cloned = Object.create(event);
+    Object.defineProperty(cloned, 'request', {
+        value: requestProxy,
+        writable: true,
+        enumerable: true,
+        configurable: true
+    });
+    return cloned;
+}
 self.addEventListener('fetch', event => {
     const url = event.request.url;
     const prefix = "/v-proxy/service/";
@@ -44,7 +54,7 @@ self.addEventListener('fetch', event => {
                             return typeof val === 'function' ? val.bind(target) : val;
                         }
                     });
-                    targetEvent = Object.assign(Object.create(event), { request: requestProxy });
+                    targetEvent = cloneEventWithRequest(event, requestProxy);
                     shouldRoute = true;
                 } else if (isMediaDomain) {
                     const encoded = "hvtrs8" + Ultraviolet.codec.xor.encode(url).split('hvtrs8')[1];
@@ -56,7 +66,7 @@ self.addEventListener('fetch', event => {
                             return typeof val === 'function' ? val.bind(target) : val;
                         }
                     });
-                    targetEvent = Object.assign(Object.create(event), { request: requestProxy });
+                    targetEvent = cloneEventWithRequest(event, requestProxy);
                     shouldRoute = true;
                 }
             }
@@ -70,7 +80,7 @@ self.addEventListener('fetch', event => {
                             return typeof val === 'function' ? val.bind(target) : val;
                         }
                     });
-                    targetEvent = Object.assign(Object.create(event), { request: requestProxy });
+                    targetEvent = cloneEventWithRequest(event, requestProxy);
                 }
                 const unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
                 const isMedia = unroutedUrl && (targetEvent.request.destination === 'image' ||
