@@ -997,7 +997,10 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
             </div>
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
-        <div class="track-plus-col">
+        <div class="track-plus-col" style="display: flex; align-items: center; gap: 12px; justify-content: flex-end;">
+            <button class="track-heart-btn" title="Like Song">
+                <i class="fa-regular fa-heart"></i>
+            </button>
             ${(isPlaylistView && playlistId !== 'favorites') ? `
             <button class="row-action-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="Remove from Playlist">
                 <i class="fa-solid fa-trash" style="color: #ef4444;"></i>
@@ -1010,6 +1013,19 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
         </div>
         <div class="track-duration">${formatTime(durationSec)}</div>
     `;
+
+    const heartBtn = div.querySelector('.track-heart-btn');
+    if (heartBtn) {
+        const isLiked = favorites.some(f => getTrackUid(f) === trackUid);
+        if (isLiked) {
+            heartBtn.classList.add('active');
+            heartBtn.innerHTML = '<i class="fa-solid fa-heart"></i>';
+        }
+        heartBtn.onclick = (e) => {
+            e.stopPropagation();
+            window.toggleLikeTrack(track, heartBtn);
+        };
+    }
 
     const actionBtn = div.querySelector('.row-action-btn');
     if (actionBtn) {
@@ -1407,16 +1423,41 @@ function updateLikeButtonStatus() {
     if (!currentTrack) return;
     const trackUid = getTrackUid(currentTrack);
     const isLiked = favorites.some(t => getTrackUid(t) === trackUid);
+    
+    // Bottom bar heart
     const btn = document.getElementById('likeButton');
     if (btn) {
         btn.innerHTML = isLiked ? '<i class="fa-solid fa-heart" style="color: #ef4444;"></i>' : '<i class="fa-regular fa-heart"></i>';
         btn.classList.toggle('active', isLiked);
     }
+    
+    // Fullscreen heart
     const fsBtn = document.getElementById('fsLike');
     if (fsBtn) {
         fsBtn.innerHTML = isLiked ? '<i class="fa-solid fa-heart" style="color: #ef4444;"></i>' : '<i class="fa-regular fa-heart"></i>';
         fsBtn.classList.toggle('active', isLiked);
     }
+
+    // List row hearts
+    document.querySelectorAll('.track-row').forEach(row => {
+        const rowUid = row.dataset.trackUid;
+        const heartBtn = row.querySelector('.track-heart-btn');
+        if (heartBtn) {
+            const rowIsLiked = favorites.some(t => getTrackUid(t) === rowUid);
+            heartBtn.innerHTML = rowIsLiked ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
+            heartBtn.classList.toggle('active', rowIsLiked);
+        }
+    });
+}
+
+function toggleFsLyrics() {
+    const fsMain = document.querySelector('.fs-main');
+    const toggleBtn = document.getElementById('fsLyricsToggle');
+    if (!fsMain || !toggleBtn) return;
+    
+    const isHidden = fsMain.classList.toggle('lyrics-hidden');
+    toggleBtn.classList.toggle('active', !isHidden);
+    localStorage.setItem('velium_fs_lyrics_hidden', isHidden);
 }
 function renderSidebarPlaylists() {
     const container = document.getElementById('sidebar-playlists'); if (!container) return;

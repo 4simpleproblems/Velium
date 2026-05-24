@@ -250,7 +250,7 @@
     
     .track-row {
       display: grid;
-      grid-template-columns: 40px 1fr 1fr 40px 60px;
+      grid-template-columns: 40px 1fr 1fr 80px 60px;
       align-items: center;
       padding: 8px 16px;
       font-size: 14px;
@@ -271,7 +271,7 @@
     .track-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .track-album { color: var(--text-subdued); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
     .track-row:hover .track-album { color: var(--text-main); }
-    .track-plus-col { display: flex; align-items: center; justify-content: center; width: 32px; }
+    .track-plus-col { display: flex; align-items: center; justify-content: flex-end; gap: 12px; width: 80px; }
     .track-duration { text-align: right; color: var(--text-subdued); font-variant-numeric: tabular-nums; min-width: 50px; }
     
     /* Playing Bar Animation */
@@ -393,6 +393,14 @@
     }
     .fs-lyrics-container .lyric-line { font-size: 32px; line-height: 1.2; opacity: 0.2; }
     .fs-lyrics-container .active { font-size: 48px; color: #fff; opacity: 1; }
+    .fs-lyrics-container.hidden { display: none !important; }
+    .fs-main.lyrics-hidden .fs-lyrics-container { display: none !important; }
+    .fs-main.lyrics-hidden .fs-art-container { width: 600px; height: 600px; }
+    
+    .track-heart-btn { background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s, color 0.2s; font-size: 14px; }
+    .track-row:hover .track-heart-btn { opacity: 1; }
+    .track-heart-btn.active { color: #ef4444; opacity: 1 !important; }
+
     .fs-controls-container { width: 100%; max-width: 800px; margin: 20px auto 40px auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 10; }
     .fs-meta { text-align: left; margin-bottom: 10px; }
     .fs-meta .np-title { font-size: 32px; font-weight: 800; }
@@ -564,7 +572,10 @@
     <div class="fs-blur-overlay"></div>
     <div class="fs-top-bar">
       <div class="brand-logo" style="padding: 0;"><i class="fa-solid fa-record-vinyl"></i> VELIUM</div>
-      <button class="ctrl-btn" onclick="toggleFullscreenPlayer()"><i class="fa-solid fa-compress fa-lg"></i></button>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <button class="ctrl-btn" id="fsLyricsToggle" onclick="toggleFsLyrics()" title="Toggle Lyrics"><i class="fa-solid fa-microphone-lines"></i></button>
+        <button class="ctrl-btn" onclick="toggleFullscreenPlayer()"><i class="fa-solid fa-compress fa-lg"></i></button>
+      </div>
     </div>
     <div class="fs-main">
       <div class="fs-art-container"><img id="fsArtwork" src=""></div>
