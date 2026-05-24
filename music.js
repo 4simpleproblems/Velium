@@ -908,7 +908,8 @@ function renderFavorites() {
 function createTrackRow(track, index, trackList, hideEllipsis = false) {
     const div = document.createElement('div');
     div.className = 'track-row';
-    div.dataset.trackUid = getTrackUid(track);
+    const trackUid = getTrackUid(track);
+    div.dataset.trackUid = trackUid;
     let durationSec = 0;
     if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
     else if (track.duration_seconds) durationSec = track.duration_seconds;
@@ -926,7 +927,7 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
             </div>
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
-        <div class="track-plus-col" style="width: 40px; display: flex; justify-content: center;">
+        <div class="track-plus-col">
             <button class="row-plus-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="Add to Playlist">
                 <i class="fa-solid fa-plus"></i>
             </button>
@@ -935,15 +936,18 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
     `;
 
     const plusBtn = div.querySelector('.row-plus-btn');
-    plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
-    div.onmouseenter = () => { plusBtn.style.opacity = '1'; };
-    div.onmouseleave = () => { plusBtn.style.opacity = '0'; };
+    if (plusBtn) {
+        plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
+    }
 
     div.addEventListener('click', (e) => {
         if (e.target.closest('.np-artist') || e.target.closest('.row-plus-btn')) return;
         playlist = trackList;
         originalPlaylist = [...trackList];
-        playTrack(index);
+        
+        // Find the fresh index in case the list has changed
+        const freshIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
+        playTrack(freshIndex > -1 ? freshIndex : index);
     });
     return div;
 }
@@ -1258,7 +1262,7 @@ function renderSidebarPlaylists() {
     const likedItem = document.createElement('div');
     likedItem.className = 'playlist-item';
     likedItem.innerHTML = `
-        <div class="pl-img" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center;">
+        <div class="pl-img" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; border-radius: 4px;">
             <i class="fa-solid fa-heart" style="color: white; font-size: 16px;"></i>
         </div>
         <div class="pl-info">
@@ -1270,10 +1274,13 @@ function renderSidebarPlaylists() {
     container.appendChild(likedItem);
 
     playlists.forEach(pl => {
+        // Skip any manual playlist that might be named "Liked Songs" to prevent duplicates
+        if (pl.name === 'Liked Songs') return;
+
         const item = document.createElement('div');
         item.className = 'playlist-item';
         item.innerHTML = `
-            <div class="pl-img" style="${pl.color ? `background: linear-gradient(135deg, ${pl.color}, var(--bg-highlight));` : ''}">${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width:100%; height:100%;">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color: var(--bg-highlight);"><i class="fa-solid fa-list" style="font-size:16px;"></i></div>`}</div>
+            <div class="pl-img" style="${pl.color ? `background: linear-gradient(135deg, ${pl.color}, var(--bg-highlight));` : ''}; border-radius: 4px; overflow: hidden;">${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width:100%; height:100%; object-fit: cover;">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color: var(--bg-highlight);"><i class="fa-solid fa-list" style="font-size:16px;"></i></div>`}</div>
             <div class="pl-info">
                 <div class="pl-name truncate" style="max-width: 140px;">${escapeHtml(pl.name)}</div>
                 <div class="pl-type">Playlist • ${pl.tracks.length} songs</div>
@@ -1317,12 +1324,12 @@ async function loadPlaylistView(playlistId) {
         <header class="hero-header" style="background: linear-gradient(to bottom, ${playlistColor} 0%, var(--bg-elevated) 100%);">
             <div class="artist-img playlist-art-container" style="border-radius: 0% !important; position: relative; overflow: hidden; cursor: pointer;" onclick="showPlaylistCoverUploadModal('${pl.id}')">
                 ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-music"></i>`}
-                <div class="art-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: ${pl.cover_url ? '0' : '1'}; transition: opacity 0.2s;">
+                <div class="art-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: ${pl.cover_url ? '0' : '1'}; transition: opacity 0.2s; visibility: ${pl.cover_url ? 'hidden' : 'visible'};">
                     <i class="fas fa-camera text-white text-2xl"></i>
                 </div>
             </div>
             <style>
-                .playlist-art-container:hover .art-overlay { opacity: 1 !important; }
+                .playlist-art-container:hover .art-overlay { opacity: 1 !important; visibility: visible !important; }
             </style>
             <div class="hero-meta">
                 <div class="verified-badge">Playlist</div>
