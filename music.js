@@ -593,32 +593,33 @@ async function loadArtistView(artistName, append = false) {
         artistSearchState = { name: artistName, offset: 0, loading: false, hasMore: true, limit: 50 };
         const container = document.getElementById('dynamicView');
         container.innerHTML = `
-            <div class="relative overflow-hidden rounded-3xl mb-10 min-h-[400px] flex items-end p-8 lg:p-12">
-                <div id="artistBackground" class="absolute inset-0 z-0 bg-card-dark opacity-40 transition-all duration-1000 scale-110 blur-3xl"></div>
-                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-[1]"></div>
-                <div class="relative z-10 flex flex-col md:flex-row items-center md:items-end gap-8 w-full animate-pulse">
-                    <div class="w-48 h-48 lg:w-64 lg:h-64 bg-card-dark rounded-full flex items-center justify-center shadow-2xl relative overflow-hidden border border-white/10 shrink-0">
-                        <i class="fas fa-user text-gray-700 text-7xl"></i>
-                    </div>
-                    <div class="flex-1 text-center md:text-left">
-                        <span class="text-xs font-bold uppercase tracking-[0.2em] text-accent-indigo mb-3 block">Artist</span>
-                        <h1 class="text-5xl lg:text-8xl font-black tracking-tighter mb-4 text-white">${escapeHtml(artistName)}</h1>
-                        <div class="flex items-center justify-center md:justify-start gap-4">
-                            <div class="h-12 w-32 bg-white/10 rounded-full"></div>
-                        </div>
-                    </div>
+            <header class="hero-header" style="background: linear-gradient(to bottom, rgba(80,80,80,1) 0%, var(--bg-elevated) 100%);">
+                <div class="artist-img">
+                    <i class="fa-solid fa-user"></i>
                 </div>
+                <div class="hero-meta">
+                    <div class="verified-badge">
+                        <i class="fa-solid fa-circle-check"></i> Verified Artist
+                    </div>
+                    <h1 class="artist-header">${escapeHtml(artistName)}</h1>
+                    <div class="monthly-listeners" id="artistTrackCount">Loading tracks...</div>
+                </div>
+            </header>
+            <div class="action-bar">
+                <button class="btn-play-large" onclick="playAllFromDynamic()"><i class="fa-solid fa-play" style="margin-left: 4px;"></i></button>
             </div>
-            <div id="dynamicList" class="space-y-1"></div>
-            <div id="artistLoader" class="py-10 text-center hidden">
-                <i class="fas fa-circle-notch fa-spin text-2xl text-accent-indigo"></i>
+            <div class="track-section">
+                <div class="track-grid" id="dynamicList"></div>
+            </div>
+            <div id="artistLoader" style="display: none; text-align: center; padding: 20px 0;">
+                <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 24px; color: var(--text-main);"></i>
             </div>
         `;
     }
     if (artistSearchState.loading || !artistSearchState.hasMore) return;
     artistSearchState.loading = true;
     const loader = document.getElementById('artistLoader');
-    if (loader) loader.classList.remove('hidden');
+    if (loader) loader.style.display = 'block';
     try {
         const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(artistName)}&limit=${artistSearchState.limit}&offset=${artistSearchState.offset}`);
         const data = await response.json();
@@ -635,39 +636,23 @@ async function loadArtistView(artistName, append = false) {
         }
         const artwork = artistTracks.length > 0 ? (artistTracks[0].local_artwork || getProxyUrl(artistTracks[0].artwork_url)) : null;
         if (!append) {
-            const container = document.getElementById('dynamicView');
-            container.innerHTML = `
-                <div class="relative overflow-hidden rounded-3xl mb-10 min-h-[400px] flex items-end p-8 lg:p-12">
-                    <div id="artistBackground" class="absolute inset-0 z-0 bg-cover bg-center opacity-40 transition-all duration-1000 scale-110 blur-3xl" style="background-image: url('${artwork || ''}')"></div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-[1]"></div>
-                    <div class="relative z-10 flex flex-col md:flex-row items-center md:items-end gap-8 w-full">
-                        <div class="w-48 h-48 lg:w-64 lg:h-64 bg-card-dark rounded-full flex items-center justify-center shadow-2xl relative overflow-hidden border border-white/10 shrink-0">
-                            ${artwork ? `<img src="${artwork}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-gray-700 text-7xl"></i>`}
-                        </div>
-                        <div class="flex-1 text-center md:text-left">
-                            <span class="text-xs font-bold uppercase tracking-[0.2em] text-accent-indigo mb-3 block">Artist</span>
-                            <h1 class="text-5xl lg:text-8xl font-black tracking-tighter mb-4 text-white">${escapeHtml(artistName)}</h1>
-                            <div class="flex items-center justify-center md:justify-start gap-4">
-                                <button class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-transform" onclick="playAllFromDynamic()">
-                                    <i class="fas fa-play text-xl ml-1"></i>
-                                </button>
-                                <span class="text-sm font-bold text-white/60" id="artistTrackCount">${artistTracks.length} tracks found</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div id="dynamicList" class="space-y-1"></div>
-                <div id="artistLoader" class="py-10 text-center hidden">
-                    <i class="fas fa-circle-notch fa-spin text-2xl text-accent-indigo"></i>
-                </div>
-            `;
+            const header = document.querySelector('#dynamicView .hero-header');
+            if (header && artwork) {
+                header.style.background = `linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, var(--bg-elevated) 100%), url('${artwork}')`;
+                header.style.backgroundSize = 'cover';
+                header.style.backgroundPosition = 'center';
+                const imgContainer = header.querySelector('.artist-img');
+                if (imgContainer) {
+                    imgContainer.innerHTML = `<img src="${artwork}">`;
+                }
+            }
             currentDynamicPlaylist = [];
         }
         const list = document.getElementById('dynamicList');
         const startIdx = currentDynamicPlaylist.length;
         currentDynamicPlaylist.push(...artistTracks);
         if (artistTracks.length === 0 && !append) {
-            list.innerHTML = '<div class="py-20 text-center text-gray-500 font-medium">No tracks found for this artist.</div>';
+            list.innerHTML = '<div style="padding: 40px 0; text-align: center; opacity: 0.5;">No tracks found for this artist.</div>';
         } else {
             artistTracks.forEach((track, index) => {
                 list.appendChild(createTrackRow(track, startIdx + index, currentDynamicPlaylist, true));
@@ -679,13 +664,13 @@ async function loadArtistView(artistName, append = false) {
         if (countEl) countEl.textContent = `${currentDynamicPlaylist.length} tracks found`;
         artistSearchState.offset += artistSearchState.limit;
         artistSearchState.loading = false;
-        if (loader) loader.classList.add('hidden');
+        if (loader) loader.style.display = 'none';
     } catch (e) {
         console.error("Error loading artist view:", e);
         artistSearchState.loading = false;
-        if (loader) loader.classList.add('hidden');
+        if (loader) loader.style.display = 'none';
         if (!append) {
-            document.getElementById('dynamicView').innerHTML = `<div class="py-20 text-center text-red-500 font-medium">Failed to load artist data. Please check your connection.</div>`;
+            document.getElementById('dynamicView').innerHTML = `<div style="padding: 40px 0; text-align: center; color: #ef4444;">Failed to load artist data.</div>`;
         }
     }
 }
@@ -811,33 +796,18 @@ function renderTrackGrid(tracks, container) {
     if (!container) return;
     tracks.forEach((track, index) => {
         const trackUid = getTrackUid(track);
-        const isLiked = favorites.some(f => getTrackUid(f) === trackUid);
         const card = document.createElement('div');
-        card.className = 'track-card relative aspect-square p-0 overflow-hidden group';
+        card.className = 'track-card';
         const artworkUrl = track.local_artwork || getProxyUrl(track.artwork_url);
         card.innerHTML = `
-            <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
-            <!-- Bottom Blur Overlay -->
-            <div class="absolute inset-x-0 bottom-0 h-1/3 bg-black/20 backdrop-blur-md border-t border-white/10 flex flex-col justify-center px-4 transition-transform duration-300">
-                <div class="font-bold text-sm truncate text-white mb-0.5">${escapeHtml(track.title)}</div>
-                <div class="text-[10px] text-gray-300 truncate uppercase tracking-wider font-medium hover:underline hover:text-white cursor-pointer relative z-30" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
-            </div>
-            <!-- Heart Button (Top Right) -->
-            <div class="heart-btn ${isLiked ? 'active' : ''} absolute top-3 right-3 w-10 h-10 bg-black/40 backdrop-blur-sm text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 border border-white/10 z-20" onclick="event.stopPropagation(); toggleLikeTrack(${JSON.stringify(track).replace(/"/g, '&quot;')}, this)">
-                <i class="${isLiked ? 'fas text-red-500' : 'far'} fa-heart"></i>
-            </div>
-            <!-- Play Button Overlay (Center) -->
-            <div class="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                <div class="w-14 h-14 bg-accent-indigo text-white rounded-full flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-300">
-                    <i class="fas fa-play text-xl ml-1"></i>
-                </div>
-            </div>
+            <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy">
+            <div class="card-title">${escapeHtml(track.title)}</div>
+            <div class="card-subtitle" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
         `;
         card.addEventListener('click', () => {
             if (container.id === 'searchGrid') {
                 playlist = [...currentSearchResults];
                 originalPlaylist = [...currentSearchResults];
-                const trackUid = getTrackUid(track);
                 const searchIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
                 currentIndex = (searchIndex > -1) ? searchIndex : index;
             } else {
@@ -873,28 +843,28 @@ function renderPlaylistGrid(playlistsData, container) {
 async function loadOfficialPlaylistDetails(playlistId) {
     switchView('dynamic');
     const container = document.getElementById('dynamicView');
-    container.innerHTML = '<div class="py-20 flex justify-center"><i class="fas fa-circle-notch fa-spin text-3xl text-accent-indigo"></i></div>';
+    container.innerHTML = '<div class="py-20 flex justify-center"><i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>';
     try {
         const response = await fetch(`${API_BASE_URL}/playlist/${playlistId}`);
         const data = await response.json();
         container.innerHTML = `
-            <div class="flex flex-col md:flex-row items-end gap-8 mb-10">
-                <img src="${getProxyUrl(data.artwork_url)}" class="w-56 h-56 rounded-3xl shadow-2xl border border-brand-border">
-                <div class="flex-1">
-                    <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Playlist</span>
-                    <h1 class="text-6xl font-black tracking-tighter mb-4">${escapeHtml(data.name)}</h1>
-                    <p class="text-gray-500 mb-4">${data.description || 'Official Playlist'}</p>
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-white">${data.song_count} songs</span>
-                    </div>
+            <header class="hero-header" style="background: linear-gradient(to bottom, #4f46e5 0%, var(--bg-elevated) 100%);">
+                <div class="artist-img" style="border-radius: 0% !important;">
+                    <img src="${getProxyUrl(data.artwork_url)}">
                 </div>
+                <div class="hero-meta">
+                    <div class="verified-badge">Playlist</div>
+                    <h1 class="artist-header">${escapeHtml(data.name)}</h1>
+                    <div class="monthly-listeners">${escapeHtml(data.description || 'Official Playlist')}</div>
+                    <div class="monthly-listeners" style="margin-top: 4px; font-weight: bold;">${data.song_count} songs</div>
+                </div>
+            </header>
+            <div class="action-bar">
+                <button class="btn-play-large" onclick="playAllFromDynamic()"><i class="fa-solid fa-play" style="margin-left: 4px;"></i></button>
             </div>
-            <div class="flex items-center gap-6 mb-8 border-b border-brand-border pb-8">
-                <button class="w-16 h-16 bg-accent-indigo rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform" onclick="playAllFromDynamic()">
-                    <i class="fas fa-play text-white text-xl"></i>
-                </button>
+            <div class="track-section">
+                <div class="track-grid" id="dynamicList"></div>
             </div>
-            <div id="dynamicList" class="space-y-2"></div>
         `;
         const list = document.getElementById('dynamicList');
         data.tracks.forEach((track, index) => list.appendChild(createTrackRow(track, index, data.tracks, true)));
@@ -906,7 +876,7 @@ function renderFavorites() {
     const count = document.getElementById('likedSongsCount');
     if (count) count.textContent = `${favorites.length} songs`;
     if (favorites.length === 0) {
-        list.innerHTML = '<div class="py-20 text-center text-gray-500">Your liked songs will appear here.</div>';
+        list.innerHTML = '<div style="padding: 40px 0; text-align: center; opacity: 0.5;">Your liked songs will appear here.</div>';
         return;
     }
     list.innerHTML = '';
@@ -915,28 +885,29 @@ function renderFavorites() {
 }
 function createTrackRow(track, index, trackList, hideEllipsis = false) {
     const div = document.createElement('div');
-    div.className = 'flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 group cursor-pointer border border-transparent hover:border-brand-border transition-all';
+    div.className = 'track-row';
     div.dataset.trackUid = getTrackUid(track);
     let durationSec = 0;
     if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
     else if (track.duration_seconds) durationSec = track.duration_seconds;
+    const isLiked = favorites.some(f => getTrackUid(f) === getTrackUid(track));
     div.innerHTML = `
-        <div class="w-10 text-center text-gray-500 font-bold group-hover:hidden">${index + 1}</div>
-        <div class="w-10 text-center text-accent-indigo hidden group-hover:block"><i class="fas fa-play"></i></div>
-        <img data-src="${track.local_artwork || getProxyUrl(track.artwork_url)}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="w-12 h-12 rounded-lg object-cover">
-        <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold text-white truncate">${escapeHtml(track.title)}</div>
-            <div class="text-xs text-gray-500 truncate hover:underline hover:text-white" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
+        <div class="track-num-col">
+            <span class="row-num">${index + 1}</span>
+            <i class="fa-solid fa-play row-play"></i>
         </div>
-        <div class="text-xs text-gray-500 font-mono hidden sm:block duration-label">${formatTime(durationSec)}</div>
-        ${!hideEllipsis ? `<button class="ellipsis-btn text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100 p-2"><i class="fas fa-ellipsis-h"></i></button>` : ''}
+        <div class="track-info">
+            <img data-src="${track.local_artwork || getProxyUrl(track.artwork_url)}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="track-thumb">
+            <div class="track-name-stack">
+                <span class="track-name">${escapeHtml(track.title)}</span>
+                <span class="np-artist" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</span>
+            </div>
+        </div>
+        <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
+        <div class="track-duration">${formatTime(durationSec)}</div>
     `;
     div.addEventListener('click', (e) => {
-        if (e.target.closest('.ellipsis-btn')) {
-            e.stopPropagation();
-            showAddToPlaylistModal(track);
-            return;
-        }
+        if (e.target.classList.contains('np-artist')) return;
         playlist = trackList;
         originalPlaylist = [...trackList];
         playTrack(index);
@@ -963,6 +934,8 @@ async function playTrack(index) {
     document.getElementById('artworkPlaceholder').classList.add('hidden');
     updateLikeButtonStatus();
     if (!document.getElementById('fullscreenPlayer').classList.contains('hidden')) updateFullscreenUI();
+    if (window.currentPanel === 'lyrics') fetchLyrics();
+    if (window.currentPanel === 'queue') renderQueue();
     document.getElementById('progressBarFill').style.width = '0%';
     document.getElementById('currentTimeLabel').textContent = '0:00';
     document.getElementById('durationLabel').textContent = '0:00';
@@ -1093,17 +1066,10 @@ function togglePlayPause() {
     }
 }
 function updatePlayPauseUI() {
-    const btns = ['playPauseButton', 'fsPlayPause', 'miniPlayPause'];
-    btns.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            if (id === 'fsPlayPause') {
-                btn.innerHTML = isPlaying ? '<i class="fas fa-pause text-4xl lg:text-6xl text-black"></i>' : '<i class="fas fa-play text-4xl lg:text-6xl ml-1 text-black"></i>';
-            } else {
-                btn.innerHTML = isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
-            }
-        }
-    });
+    const btn = document.getElementById('playPauseButton');
+    if (btn) btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:2px;"></i>';
+    const fsBtn = document.getElementById('fsPlayPause');
+    if (fsBtn) fsBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:4px;"></i>';
 }
 function playNext() {
     if (playlist.length === 0) {
@@ -1214,57 +1180,86 @@ function updateLikeButtonStatus() {
     const trackUid = getTrackUid(currentTrack);
     const isLiked = favorites.some(t => getTrackUid(t) === trackUid);
     const btn = document.getElementById('likeButton');
-    if (btn) btn.innerHTML = isLiked ? '<i class="fas fa-heart text-red-500"></i>' : '<i class="far fa-heart"></i>';
+    if (btn) {
+        btn.innerHTML = isLiked ? '<i class="fa-solid fa-heart" style="color: #ef4444;"></i>' : '<i class="fa-regular fa-heart"></i>';
+        btn.classList.toggle('active', isLiked);
+    }
     const fsBtn = document.getElementById('fsLike');
     if (fsBtn) {
-        fsBtn.innerHTML = isLiked ? '<i class="fas fa-heart text-red-500"></i>' : '<i class="far fa-heart"></i>';
+        fsBtn.innerHTML = isLiked ? '<i class="fa-solid fa-heart" style="color: #ef4444;"></i>' : '<i class="fa-regular fa-heart"></i>';
         fsBtn.classList.toggle('active', isLiked);
     }
 }
 function renderSidebarPlaylists() {
     const container = document.getElementById('sidebar-playlists'); if (!container) return;
     container.innerHTML = '';
-    const liked = document.createElement('div'); liked.className = 'nav-item';
-    liked.innerHTML = `<i class="fas fa-heart"></i> <span class="truncate">Liked Songs</span>`;
-    liked.onclick = () => switchView('favorites'); container.appendChild(liked);
     playlists.forEach(pl => {
-        const item = document.createElement('div'); item.className = 'nav-item';
-        item.innerHTML = `<i class="fas fa-list"></i> <span class="truncate">${escapeHtml(pl.name)}</span>`;
-        item.onclick = () => loadPlaylistView(pl.id); container.appendChild(item);
+        const item = document.createElement('div');
+        item.className = 'playlist-item';
+        item.innerHTML = `
+            <div class="pl-img">${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width:100%; height:100%;">` : `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color: var(--bg-highlight);"><i class="fa-solid fa-list" style="font-size:16px;"></i></div>`}</div>
+            <div class="pl-info">
+                <div class="pl-name truncate" style="max-width: 140px;">${escapeHtml(pl.name)}</div>
+                <div class="pl-type">Playlist • ${pl.tracks.length} songs</div>
+            </div>
+        `;
+        item.onclick = () => loadPlaylistView(pl.id);
+        container.appendChild(item);
     });
 }
 function renderLibrary() {
     const container = document.getElementById('libraryContent'); if (!container) return;
     container.innerHTML = '';
-    const likedCard = document.createElement('div'); likedCard.className = 'track-card relative aspect-square p-0 overflow-hidden group';
-    likedCard.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center"><i class="fas fa-heart text-white text-5xl"></i></div><div class="absolute inset-x-0 bottom-0 h-1/3 bg-black/20 backdrop-blur-md border-t border-white/10 flex flex-col justify-center px-4"><div class="font-bold text-white">Liked Songs</div><div class="text-[10px] text-gray-300 uppercase">${favorites.length} songs</div></div>`;
-    likedCard.onclick = () => switchView('favorites'); container.appendChild(likedCard);
+    const likedCard = document.createElement('div');
+    likedCard.className = 'track-card';
+    likedCard.innerHTML = `
+        <div class="card-thumb" style="background: linear-gradient(135deg, #4f46e5, #8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff; font-size:48px;"><i class="fa-solid fa-heart"></i></div>
+        <div class="card-title">Liked Songs</div>
+        <div class="card-subtitle">Playlist • ${favorites.length} songs</div>
+    `;
+    likedCard.onclick = () => switchView('favorites');
+    container.appendChild(likedCard);
     playlists.forEach(pl => {
-        const card = document.createElement('div'); card.className = 'track-card relative aspect-square p-0 overflow-hidden group';
-        card.innerHTML = `<div class="w-full h-full bg-card-dark flex items-center justify-center"><i class="fas fa-music text-gray-700 text-5xl"></i></div><div class="absolute inset-x-0 bottom-0 h-1/3 bg-black/20 backdrop-blur-md border-t border-white/10 flex flex-col justify-center px-4"><div class="font-bold text-white truncate">${escapeHtml(pl.name)}</div><div class="text-[10px] text-gray-300 uppercase">${pl.tracks.length} songs</div></div>`;
-        card.onclick = () => loadPlaylistView(pl.id); container.appendChild(card);
+        const card = document.createElement('div');
+        card.className = 'track-card';
+        card.innerHTML = `
+            <div class="card-thumb" style="display:flex; align-items:center; justify-content:center;">
+                ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fa-solid fa-music" style="font-size:48px; color: var(--text-subdued); opacity:0.4;"></i>`}
+            </div>
+            <div class="card-title">${escapeHtml(pl.name)}</div>
+            <div class="card-subtitle">Playlist • ${pl.tracks.length} songs</div>
+        `;
+        card.onclick = () => loadPlaylistView(pl.id);
+        container.appendChild(card);
     });
 }
 async function loadPlaylistView(playlistId) {
     const pl = playlists.find(p => p.id === playlistId); if (!pl) return;
     switchView('dynamic'); const container = document.getElementById('dynamicView');
     container.innerHTML = `
-        <div class="flex flex-col md:flex-row items-end gap-8 mb-10">
-            <div class="w-56 h-56 bg-card-dark border border-brand-border rounded-3xl flex items-center justify-center shadow-2xl relative">
-                ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover rounded-3xl">` : `<i class="fas fa-music text-gray-700 text-7xl"></i>`}
+        <header class="hero-header" style="background: linear-gradient(to bottom, #4f46e5 0%, var(--bg-elevated) 100%);">
+            <div class="artist-img" style="border-radius: 0% !important; position: relative;">
+                ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-music"></i>`}
                 <button class="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 rounded-full p-2 text-white text-sm" onclick="showPlaylistCoverUploadModal('${pl.id}')"><i class="fas fa-camera"></i></button>
             </div>
-            <div class="flex-1"><span class="text-xs font-bold uppercase tracking-widest text-gray-400">Playlist</span><h1 class="text-7xl font-black tracking-tighter mb-4">${escapeHtml(pl.name)}</h1><p class="text-gray-500 mb-4">${escapeHtml(pl.description || 'No description')}</p><div class="flex items-center gap-2"><span class="font-bold text-white">${pl.tracks.length} songs</span></div></div>
+            <div class="hero-meta">
+                <div class="verified-badge">Playlist</div>
+                <h1 class="artist-header">${escapeHtml(pl.name)}</h1>
+                <div class="monthly-listeners">${escapeHtml(pl.description || 'No description')}</div>
+                <div class="monthly-listeners" style="margin-top: 4px; font-weight: bold;">${pl.tracks.length} songs</div>
+            </div>
+        </header>
+        <div class="action-bar">
+            <button class="btn-play-large" onclick="playAllFromDynamic()"><i class="fa-solid fa-play" style="margin-left: 4px;"></i></button>
+            <button class="btn-follow" onclick="showEditPlaylistModal('${pl.id}')">Edit</button>
+            <button class="btn-follow" style="border-color: #ef4444; color: #ef4444;" onclick="deletePlaylist('${pl.id}')">Delete</button>
         </div>
-        <div class="flex items-center gap-6 mb-8 border-b border-brand-border pb-8">
-            <button class="w-16 h-16 bg-accent-indigo rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform" onclick="playAllFromDynamic()"><i class="fas fa-play text-white text-xl"></i></button>
-            <button class="player-btn text-lg" onclick="showEditPlaylistModal('${pl.id}')"><i class="fas fa-edit"></i> Edit</button>
-            <button class="player-btn text-lg text-red-500 hover:text-red-400" onclick="deletePlaylist('${pl.id}')"><i class="fas fa-trash"></i> Delete</button>
+        <div class="track-section">
+            <div class="track-grid" id="dynamicList"></div>
         </div>
-        <div id="dynamicList" class="space-y-2"></div>
     `;
     const list = document.getElementById('dynamicList');
-    if (pl.tracks.length === 0) list.innerHTML = '<div class="py-20 text-center text-gray-500">This playlist is empty. Add some songs!</div>';
+    if (pl.tracks.length === 0) list.innerHTML = '<div style="padding: 40px 0; text-align: center; opacity: 0.5;">This playlist is empty. Add some songs!</div>';
     else {
         pl.tracks.forEach((track, index) => list.appendChild(createTrackRow(track, index, pl.tracks, true)));
         observeImages(list);
@@ -1499,3 +1494,81 @@ function startProgressUpdate() {
 }
 function stopProgressUpdate() { clearInterval(progressInterval); }
 function updateVolumeUI() { const bar = document.getElementById('volumeBarFill'); if (bar) bar.style.width = volume + '%'; const slider = document.getElementById('volumeSlider'); if (slider) slider.value = volume; }
+async function fetchLyrics() {
+    const panelContent = document.getElementById('panelContent');
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    if (!currentTrack) {
+        if (panelContent) panelContent.innerHTML = '<div class="py-10 text-center">No track playing</div>';
+        return;
+    }
+    const loadingHtml = '<div class="py-10 text-center"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
+    if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
+    if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
+    try {
+        const id = currentTrack.youtube_id || currentTrack.videoId || getTrackUid(currentTrack);
+        const response = await fetch(`${API_BASE_URL}/lyrics/${id}`);
+        const data = await response.json();
+        let html = '';
+        if (data.lyrics) {
+            const lines = data.lyrics.split('\n');
+            html = lines.map(line => `<div class="lyric-line">${escapeHtml(line)}</div>`).join('');
+        } else {
+            html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
+        }
+        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+        if (fsLyrics) fsLyrics.innerHTML = html;
+    } catch (e) {
+        const errHtml = '<div class="py-10 text-center" style="color: #ef4444;">Lyrics unavailable.</div>';
+        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = errHtml;
+        if (fsLyrics) fsLyrics.innerHTML = errHtml;
+    }
+}
+function renderQueue() {
+    const panelContent = document.getElementById('panelContent');
+    if (!panelContent) return;
+    if (!currentTrack) {
+        panelContent.innerHTML = '<div class="py-10 text-center">No track playing</div>';
+        return;
+    }
+    let html = `
+        <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-main); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Now Playing</div>
+        <div class="queue-item" style="border: none; margin-bottom: 20px;">
+            <img src="${currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url)}" class="q-art">
+            <div style="display: flex; flex-direction: column; min-w-0; flex: 1;">
+                <span style="font-weight: 700; color: var(--text-main); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(currentTrack.title)}</span>
+                <span style="font-size: 12px; color: var(--text-subdued); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(currentTrack.artist_name)}</span>
+            </div>
+        </div>
+        <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-main); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Next In Queue</div>
+    `;
+    const upcoming = [];
+    const maxItems = 15;
+    let count = 0;
+    if (isShuffle) {
+        for (let i = shuffledCurrentIndex + 1; i < shuffledIndices.length && count < maxItems; i++) {
+            upcoming.push(playlist[shuffledIndices[i]]);
+            count++;
+        }
+    } else {
+        for (let i = currentIndex + 1; i < playlist.length && count < maxItems; i++) {
+            upcoming.push(playlist[i]);
+            count++;
+        }
+    }
+    if (upcoming.length === 0) {
+        html += '<div class="py-4 text-center" style="font-size: 12px; opacity: 0.5;">Queue is empty.</div>';
+    } else {
+        upcoming.forEach((track) => {
+            html += `
+                <div class="queue-item">
+                    <img src="${track.local_artwork || getProxyUrl(track.artwork_url)}" class="q-art">
+                    <div style="display: flex; flex-direction: column; min-w-0; flex: 1;">
+                        <span style="font-weight: 700; color: var(--text-main); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(track.title)}</span>
+                        <span style="font-size: 12px; color: var(--text-subdued); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(track.artist_name)}</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    panelContent.innerHTML = html;
+}
