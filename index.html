@@ -85,10 +85,28 @@
       grid-template-areas:
         "sidebar main panel"
         "playbar playbar playbar";
-      grid-template-columns: 240px 1fr 350px;
+      grid-template-columns: 240px 1fr 0px;
       grid-template-rows: 1fr 90px;
       overflow: hidden;
+      transition: grid-template-columns 0.3s ease;
     }
+    body.panel-active {
+      grid-template-columns: 240px 1fr 350px;
+    }
+    .view { display: none; }
+    .view.active { display: block !important; }
+    .right-panel { 
+      grid-area: panel; 
+      background-color: var(--bg-base); 
+      border-left: 1px solid var(--divider); 
+      display: flex; 
+      flex-direction: column; 
+      overflow: hidden; 
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0.3s;
+    }
+    body.panel-active .right-panel { visibility: visible; opacity: 1; }
     .sidebar {
       grid-area: sidebar;
       background-color: var(--bg-base);
@@ -176,9 +194,7 @@
     .track-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .track-album { color: var(--text-subdued); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
     .track-row:hover .track-album { color: var(--text-main); }
-    .track-plus-col { display: flex; align-items: center; justify-content: center; width: 32px; }
     .track-duration { text-align: right; color: var(--text-subdued); font-variant-numeric: tabular-nums; min-width: 50px; }
-    .right-panel { grid-area: panel; background-color: var(--bg-base); border-left: 1px solid var(--divider); display: flex; flex-direction: column; overflow: hidden; }
     .panel-header { padding: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--divider); }
     .panel-title { font-weight: 800; color: var(--text-main); }
     .panel-content { flex: 1; overflow-y: auto; padding: 24px; }
@@ -318,13 +334,13 @@
     <div id="dynamicView" class="view"></div>
   </main>
   <aside class="right-panel" id="sidePanel">
-    <div class="panel-header"><div class="panel-title" id="panelTitle">Lyrics</div><div style="display: flex; gap: 16px;"><i class="fa-solid fa-microphone-lines" style="cursor: pointer;" onclick="switchPanel('lyrics')"></i><i class="fa-solid fa-list-ul" style="cursor: pointer;" onclick="switchPanel('queue')"></i></div></div>
+    <div class="panel-header"><div class="panel-title" id="panelTitle">Lyrics</div><div style="display: flex; gap: 16px;"><i class="fa-solid fa-microphone-lines" style="cursor: pointer;" onclick="togglePanel('lyrics')" id="btnLyrics"></i><i class="fa-solid fa-list-ul" style="cursor: pointer;" onclick="togglePanel('queue')" id="btnQueue"></i></div></div>
     <div class="panel-content" id="panelContent"></div>
   </aside>
   <footer class="playbar">
     <div class="now-playing">
       <img src="" class="np-art hidden" id="currentArtwork" onclick="toggleFullscreenPlayer()">
-      <div id="artworkPlaceholder" style="width:56px; height:56px; background-color:#333; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="toggleFullscreenPlayer()"><i class="fa-solid fa-music"></i></div>
+      <div id="artworkPlaceholder" style="width:56px; height:56px; background-color:#333; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius: 4px;" onclick="toggleFullscreenPlayer()"><i class="fa-solid fa-music"></i></div>
       <div class="np-info">
         <div class="np-title" id="currentTrackName">Not Playing</div>
         <div class="np-artist" id="currentArtistName">Select a track</div>
@@ -382,7 +398,7 @@
     <div class="modal-content"><h2 class="modal-title">Create Playlist</h2><input type="text" id="playlistNameInput" class="modal-input" placeholder="Playlist Name"><textarea id="playlistDescInput" class="modal-input" style="height: 100px; resize: none;" placeholder="Description (Optional)"></textarea><div class="modal-buttons"><button class="btn-flat" onclick="hideCreatePlaylistModal()">Cancel</button><button class="btn-flat primary" id="savePlaylistBtn">Create</button></div></div>
   </div>
   <div id="editPlaylistModal" class="modal-overlay">
-    <div class="modal-content"><h2 class="modal-title">Edit Playlist</h2><input type="hidden" id="editPlaylistId"><div style="display: flex; flex-direction: column; align-items: center;"><div class="playlist-edit-art" onclick="document.getElementById('playlistCoverInput').click()"><img id="editPlaylistArtPreview" src=""><div id="editPlaylistArtPlaceholder" style="display: flex; align-items: center; justify-center; flex-direction: column;"><i class="fa-solid fa-camera fa-2xl"></i></div><div class="overlay">Change</div></div><div id="removeArtBtn" class="remove-art-btn" onclick="removePlaylistArt()">Remove Image</div></div><input type="text" id="editPlaylistNameInput" class="modal-input" placeholder="Playlist Name"><textarea id="editPlaylistDescInput" class="modal-input" style="height: 100px; resize: none;" placeholder="Description"></textarea><div style="margin-top: 16px;"><label style="font-size: 12px; font-weight: bold; color: var(--text-subdued);">Background Gradient Color</label><div id="editPlaylistColorPicker" class="modal-color-picker"></div><input type="hidden" id="editPlaylistColor" value="#4f46e5"></div><div class="modal-buttons"><button class="btn-flat" onclick="hideEditPlaylistModal()">Cancel</button><button class="btn-flat primary" id="confirmEditPlaylistBtn">Save</button></div></div>
+    <div class="modal-content"><h2 class="modal-title">Edit Playlist</h2><input type="hidden" id="editPlaylistId"><div style="display: flex; flex-direction: column; align-items: center;"><div class="playlist-edit-art" onclick="document.getElementById('playlistCoverInput').click()"><img id="editPlaylistArtPreview" src=""><div id="editPlaylistArtPlaceholder" style="display: flex; align-items: center; justify-content: center; flex-direction: column;"><i class="fa-solid fa-camera fa-2xl"></i></div><div class="overlay">Change</div></div><div id="removeArtBtn" class="remove-art-btn" onclick="removePlaylistArt()">Remove Image</div></div><input type="text" id="editPlaylistNameInput" class="modal-input" placeholder="Playlist Name"><textarea id="editPlaylistDescInput" class="modal-input" style="height: 100px; resize: none;" placeholder="Description"></textarea><div style="margin-top: 16px;"><label style="font-size: 12px; font-weight: bold; color: var(--text-subdued);">Background Gradient Color</label><div id="editPlaylistColorPicker" class="modal-color-picker"></div><input type="hidden" id="editPlaylistColor" value="#4f46e5"></div><div class="modal-buttons"><button class="btn-flat" onclick="hideEditPlaylistModal()">Cancel</button><button class="btn-flat primary" id="confirmEditPlaylistBtn">Save</button></div></div>
   </div>
   <div id="cropperModal" class="modal-overlay"><div class="modal-content" style="max-width: 600px;"><h2 class="modal-title">Adjust Cover</h2><div style="background-color: #000; border-radius: 8px; margin-bottom: 20px; overflow: hidden;"><canvas id="cropperCanvas" style="display: block; max-width: 100%;"></canvas></div><p style="font-size: 12px; color: var(--text-subdued); margin-bottom: 20px; text-align: center;">Drag to move. Scroll to resize.</p><div class="modal-buttons"><button class="btn-flat" id="cancelCropBtn">Cancel</button><button id="submitCropBtn" class="btn-flat primary">Submit</button></div></div></div>
   <input type="file" id="playlistCoverInput" accept="image/*" style="display: none;">

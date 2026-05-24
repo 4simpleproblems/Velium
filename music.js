@@ -616,13 +616,19 @@ function updateFullscreenTint(imageUrl) {
 function switchView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const targetView = document.getElementById(viewName + 'View');
-    if (targetView) targetView.classList.add('active');
+    
+    const targetView = document.getElementById(viewName + 'View') || document.getElementById(viewName);
+    if (targetView) {
+        targetView.classList.add('active');
+        // Ensure scroll to top
+        document.querySelector('.main-view')?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
     const navItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
     if (navItem) navItem.classList.add('active');
+    
     if (viewName === 'favorites') renderFavorites();
     if (viewName === 'library') renderLibrary();
-    document.querySelector('.main-view')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 let artistSearchState = { name: '', offset: 0, loading: false, hasMore: true, limit: 50 };
 async function loadArtistView(artistName, append = false) {
