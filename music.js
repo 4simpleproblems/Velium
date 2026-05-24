@@ -1020,6 +1020,7 @@ function loadAudioPlayer(url) {
                 const fsCurrent = document.getElementById('fsCurrentTime'); if (fsCurrent) fsCurrent.textContent = formatTime(audio.currentTime);
                 const fsDuration = document.getElementById('fsDuration'); if (fsDuration) fsDuration.textContent = formatTime(audio.duration);
                 saveTrackDuration(currentTrack, audio.duration);
+                updateLyricsSync(audio.currentTime);
             }
         });
     }
@@ -1494,12 +1495,86 @@ function startProgressUpdate() {
                 const fsCurrent = document.getElementById('fsCurrentTime'); if (fsCurrent) fsCurrent.textContent = formatTime(current);
                 const fsDuration = document.getElementById('fsDuration'); if (fsDuration) fsDuration.textContent = formatTime(total);
                 saveTrackDuration(currentTrack, total);
+                updateLyricsSync(current);
             }
+        } else if (activeSource === 'audio') {
+            const audio = document.getElementById('nativeAudio');
+            if (audio) updateLyricsSync(audio.currentTime);
         }
-    }, 1000);
+    }, 250);
 }
 function stopProgressUpdate() { clearInterval(progressInterval); }
 function updateVolumeUI() { const bar = document.getElementById('volumeBarFill'); if (bar) bar.style.width = volume + '%'; const slider = document.getElementById('volumeSlider'); if (slider) slider.value = volume; }
+let parsedLyrics = [];
+function parseLyrics(lyricsText, duration) {
+    const lines = lyricsText.split('\n');
+    const parsed = [];
+    const timeRegex = /\[(\d+):(\d+)(?:\.(\d+))?\]/;
+    let hasTimestamps = false;
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        const match = timeRegex.exec(line);
+        if (match) {
+            hasTimestamps = true;
+            const minutes = parseInt(match[1]);
+            const seconds = parseInt(match[2]);
+            const ms = match[3] ? parseFloat('0.' + match[3]) : 0;
+            const time = minutes * 60 + seconds + ms;
+            const text = line.replace(timeRegex, '').trim();
+            parsed.push({ time, text });
+        } else {
+            parsed.push({ time: null, text: line });
+        }
+    }
+    if (!hasTimestamps && duration && duration > 0) {
+        const total = parsed.length;
+        parsed.forEach((item, index) => {
+            item.time = (index / total) * duration;
+        });
+    }
+    return parsed;
+}
+function updateLyricsSync(currentTime) {
+    if (!parsedLyrics || parsedLyrics.length === 0) return;
+    let activeIndex = -1;
+    for (let i = 0; i < parsedLyrics.length; i++) {
+        if (currentTime >= parsedLyrics[i].time) {
+            activeIndex = i;
+        } else {
+            break;
+        }
+    }
+    if (activeIndex === -1) return;
+    const panelContent = document.getElementById('panelContent');
+    if (panelContent && currentPanel === 'lyrics') {
+        const lines = panelContent.querySelectorAll('.lyric-line');
+        lines.forEach((line, index) => {
+            if (index === activeIndex) {
+                if (!line.classList.contains('active')) {
+                    line.classList.add('active');
+                    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } else {
+                line.classList.remove('active');
+            }
+        });
+    }
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    if (fsLyrics && !document.getElementById('fullscreenPlayer').classList.contains('hidden')) {
+        const lines = fsLyrics.querySelectorAll('.lyric-line');
+        lines.forEach((line, index) => {
+            if (index === activeIndex) {
+                if (!line.classList.contains('active')) {
+                    line.classList.add('active');
+                    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } else {
+                line.classList.remove('active');
+            }
+        });
+    }
+}
 async function fetchLyrics() {
     const panelContent = document.getElementById('panelContent');
     const fsLyrics = document.querySelector('.fs-lyrics-container');
@@ -1514,16 +1589,28 @@ async function fetchLyrics() {
         const id = currentTrack.youtube_id || currentTrack.videoId || getTrackUid(currentTrack);
         const response = await fetch(`${API_BASE_URL}/lyrics/${id}`);
         const data = await response.json();
-        let html = '';
         if (data.lyrics) {
-            const lines = data.lyrics.split('\n');
-            html = lines.map(line => `<div class="lyric-line">${escapeHtml(line)}</div>`).join('');
+            let duration = currentTrack.duration || 0;
+            if (!duration) {
+                if (activeSource === 'audio') {
+                    const audio = document.getElementById('nativeAudio');
+                    if (audio) duration = audio.duration;
+                } else if (player && typeof player.getDuration === 'function') {
+                    duration = player.getDuration();
+                }
+            }
+            parsedLyrics = parseLyrics(data.lyrics, duration);
+            const html = parsedLyrics.map(line => `<div class="lyric-line">${escapeHtml(line.text)}</div>`).join('');
+            if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+            if (fsLyrics) fsLyrics.innerHTML = html;
         } else {
-            html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
+            parsedLyrics = [];
+            const html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
+            if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+            if (fsLyrics) fsLyrics.innerHTML = html;
         }
-        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
-        if (fsLyrics) fsLyrics.innerHTML = html;
     } catch (e) {
+        parsedLyrics = [];
         const errHtml = '<div class="py-10 text-center" style="color: #ef4444;">Lyrics unavailable.</div>';
         if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = errHtml;
         if (fsLyrics) fsLyrics.innerHTML = errHtml;
@@ -1616,3 +1703,18 @@ function closePanel() {
 }
 window.togglePanel = togglePanel;
 window.closePanel = closePanel;
+window.switchView = switchView;
+window.showCreatePlaylistModal = showCreatePlaylistModal;
+window.hideCreatePlaylistModal = hideCreatePlaylistModal;
+window.showPlaylistCoverUploadModal = showPlaylistCoverUploadModal;
+window.showEditPlaylistModal = showEditPlaylistModal;
+window.confirmEditPlaylist = confirmEditPlaylist;
+window.deletePlaylist = deletePlaylist;
+window.playAllFromDynamic = playAllFromDynamic;
+window.playAllFavorites = playAllFavorites;
+window.toggleLike = toggleLike;
+window.toggleShuffle = toggleShuffle;
+window.playPrev = playPrev;
+window.togglePlayPause = togglePlayPause;
+window.playNext = playNext;
+window.cycleRepeat = cycleRepeat;
