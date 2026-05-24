@@ -350,7 +350,7 @@
     /* Lyric Dots Animation */
     .lyric-dots { display: flex; gap: 8px; justify-content: center; padding: 20px 0; opacity: 0; transition: opacity 0.5s; }
     .lyric-dots.active { opacity: 1; }
-    .lyric-dot { width: 8px; height: 8px; background-color: rgba(255,255,255,0.2); rounded-full: 50%; border-radius: 50%; transition: all 0.3s; }
+    .lyric-dot { width: 8px; height: 8px; background-color: rgba(255,255,255,0.2); border-radius: 50%; transition: all 0.3s; }
     .lyric-dot.highlight { background-color: #fff; transform: scale(1.5); }
 
     .modal-color-picker { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
@@ -673,17 +673,6 @@
           <i class="fa-solid fa-book-open" style="font-size: 18px;"></i> Your Library
         </div>
         <i class="fa-solid fa-plus" style="font-size: 16px; cursor: pointer;" onclick="showCreatePlaylistModal()"></i>
-      </div>
-      <div class="playlist-item" onclick="switchView('favorites')">
-        <div class="pl-img">
-          <div class="bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center" style="width:100%; height:100%; background: linear-gradient(135deg, #4f46e5, #8b5cf6);">
-            <i class="fa-solid fa-heart" style="color: #fff;"></i>
-          </div>
-        </div>
-        <div class="pl-info">
-          <div class="pl-name">Liked Songs</div>
-          <div class="pl-type">Playlist • <span id="likedSongsCount">0</span> songs</div>
-        </div>
       </div>
       <div id="sidebar-playlists"></div>
     </div>

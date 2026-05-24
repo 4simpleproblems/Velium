@@ -1291,10 +1291,15 @@ async function loadPlaylistView(playlistId) {
     const playlistColor = pl.color || '#4f46e5';
     container.innerHTML = `
         <header class="hero-header" style="background: linear-gradient(to bottom, ${playlistColor} 0%, var(--bg-elevated) 100%);">
-            <div class="artist-img" style="border-radius: 0% !important; position: relative;">
+            <div class="artist-img playlist-art-container" style="border-radius: 0% !important; position: relative; overflow: hidden; cursor: pointer;" onclick="showPlaylistCoverUploadModal('${pl.id}')">
                 ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-music"></i>`}
-                <button class="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 rounded-full p-2 text-white text-sm" onclick="showPlaylistCoverUploadModal('${pl.id}')"><i class="fas fa-camera"></i></button>
+                <div class="art-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: ${pl.cover_url ? '0' : '1'}; transition: opacity 0.2s;">
+                    <i class="fas fa-camera text-white text-2xl"></i>
+                </div>
             </div>
+            <style>
+                .playlist-art-container:hover .art-overlay { opacity: 1 !important; }
+            </style>
             <div class="hero-meta">
                 <div class="verified-badge">Playlist</div>
                 <h1 class="artist-header">${escapeHtml(pl.name)}</h1>
@@ -1634,10 +1639,11 @@ function initCropper() {
         const pl = playlists.find(p => p.id.toString() === id.toString());
         if (pl) {
             updatePlaylist(pl.id, pl.name, pl.description, base64);
-            document.getElementById('cropperModal').style.display = 'none';
         } else {
             console.error('Playlist not found for ID:', id);
         }
+        document.getElementById('cropperModal').style.display = 'none';
+        document.getElementById('playlistCoverInput').value = '';
     });
 }
 function showPlaylistCoverUploadModal(id) {
@@ -1699,6 +1705,17 @@ function parseLyrics(lyricsText, duration) {
     
     // Insert dots for long breaks
     const finalParsed = [];
+    
+    // Handle start wait
+    if (parsed.length > 0 && parsed[0].time > 3) {
+        finalParsed.push({ 
+            time: 0, 
+            endTime: parsed[0].time - 0.5,
+            type: 'dots', 
+            text: '...' 
+        });
+    }
+
     for (let i = 0; i < parsed.length; i++) {
         finalParsed.push(parsed[i]);
         if (i < parsed.length - 1 && parsed[i+1].time - parsed[i].time > 5) {
