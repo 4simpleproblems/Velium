@@ -71,17 +71,6 @@ self.addEventListener('fetch', event => {
                 }
             }
             if (shouldRoute) {
-                const decodedUrl = decodeURIComponent(targetEvent.request.url);
-                if (decodedUrl !== targetEvent.request.url) {
-                    const requestProxy = new Proxy(targetEvent.request, {
-                        get(target, prop) {
-                            if (prop === 'url') return decodedUrl;
-                            const val = target[prop];
-                            return typeof val === 'function' ? val.bind(target) : val;
-                        }
-                    });
-                    targetEvent = cloneEventWithRequest(event, requestProxy);
-                }
                 const unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
                 const isMedia = unroutedUrl && (
                     targetEvent.request.destination === 'image' ||
