@@ -161,17 +161,18 @@ async function preloadTracks() {
 async function preloadSingleTrack(index, type) {
     const track = playlist[index];
     if (!track) return;
+    const trackUid = getTrackUid(track);
     const cache = type === 'next' ? preloadedNextTrack : preloadedPrevTrack;
-    if (cache && cache.index === index) return;
+    if (cache && cache.uid === trackUid) return;
     try {
         if (track.youtube_id || track.videoId) {
-            const data = { index, source: 'youtube', videoId: track.youtube_id || track.videoId };
+            const data = { index, uid: trackUid, source: 'youtube', videoId: track.youtube_id || track.videoId };
             if (type === 'next') preloadedNextTrack = data; else preloadedPrevTrack = data;
             return;
         }
         const directUrl = getDownloadUrl(track);
         if (directUrl) {
-            const data = { index, source: 'audio', url: directUrl };
+            const data = { index, uid: trackUid, source: 'audio', url: directUrl };
             if (type === 'next') preloadedNextTrack = data; else preloadedPrevTrack = data;
             let preloadElId = type === 'next' ? 'preloadAudioNext' : 'preloadAudioPrev';
             let preloadAudio = document.getElementById(preloadElId);
@@ -191,7 +192,7 @@ async function preloadSingleTrack(index, type) {
             if (data.videoId) {
                 track.youtube_id = data.videoId;
                 saveLibraryData();
-                const cacheData = { index, source: 'youtube', videoId: data.videoId };
+                const cacheData = { index, uid: trackUid, source: 'youtube', videoId: data.videoId };
                 if (type === 'next') preloadedNextTrack = cacheData; else preloadedPrevTrack = cacheData;
             }
         }
@@ -838,6 +839,8 @@ async function searchPrevPage() {
 }
 function renderTrackGrid(tracks, container, parentList = null) {
     if (!container) return;
+    const isSearchView = container.id === 'searchGrid';
+    
     tracks.forEach((track) => {
         const trackUid = getTrackUid(track);
         const card = document.createElement('div');
@@ -847,9 +850,11 @@ function renderTrackGrid(tracks, container, parentList = null) {
         card.innerHTML = `
             <div style="position: relative; overflow: hidden; margin-bottom: 16px;">
                 <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy" style="margin-bottom: 0;">
+                ${isSearchView ? '' : `
                 <button class="card-plus-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; border-radius: 50% !important; width: 30px; height: 30px; color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; cursor: pointer;" title="Add to Playlist">
                     <i class="fa-solid fa-plus" style="font-size: 14px;"></i>
                 </button>
+                `}
             </div>
             <div class="card-title">${escapeHtml(track.title)}</div>
             <div class="card-subtitle" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
@@ -1126,9 +1131,12 @@ async function playTrack(index) {
     document.getElementById('progressBarFill').style.width = '0%';
     document.getElementById('currentTimeLabel').textContent = '0:00';
     document.getElementById('durationLabel').textContent = '0:00';
+    
     let preloaded = null;
-    if (preloadedNextTrack && preloadedNextTrack.index === index) preloaded = preloadedNextTrack;
-    else if (preloadedPrevTrack && preloadedPrevTrack.index === index) preloaded = preloadedPrevTrack;
+    const currentUid = getTrackUid(currentTrack);
+    if (preloadedNextTrack && preloadedNextTrack.uid === currentUid) preloaded = preloadedNextTrack;
+    else if (preloadedPrevTrack && preloadedPrevTrack.uid === currentUid) preloaded = preloadedPrevTrack;
+    
     if (preloaded) {
         if (preloaded.source === 'audio') loadAudioPlayer(preloaded.url);
         else loadYouTubePlayer(preloaded.videoId);
@@ -1274,7 +1282,15 @@ function loadYouTubePlayer(videoId) {
     }
 }
 function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.PLAYING) { isPlaying = true; updatePlayPauseUI(); startProgressUpdate(); }
+    if (event.data === YT.PlayerState.PLAYING) { 
+        isPlaying = true; 
+        updatePlayPauseUI(); 
+        startProgressUpdate(); 
+        setPlaybackLoading(false);
+    }
+    else if (event.data === YT.PlayerState.BUFFERING) {
+        setPlaybackLoading(true);
+    }
     else if (event.data === YT.PlayerState.PAUSED) { isPlaying = false; updatePlayPauseUI(); stopProgressUpdate(); }
     else if (event.data === YT.PlayerState.ENDED) playNext();
 }
