@@ -386,21 +386,6 @@ function setupEventListeners() {
     if (nextBtn) nextBtn.addEventListener('click', searchNextPage);
     if (prevBtn) prevBtn.addEventListener('click', searchPrevPage);
 
-    const playPauseBtn = document.getElementById('playPauseButton');
-    if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlayPause);
-    
-    const globalNextBtn = document.getElementById('nextButtonGlobal'); // In case it exists
-    if (globalNextBtn) globalNextBtn.addEventListener('click', playNext);
-
-    const shuffleBtn = document.getElementById('shuffleButton');
-    if (shuffleBtn) shuffleBtn.addEventListener('click', toggleShuffle);
-    
-    const repeatBtn = document.getElementById('repeatButton');
-    if (repeatBtn) repeatBtn.addEventListener('click', cycleRepeat);
-    
-    const likeBtn = document.getElementById('likeButton');
-    if (likeBtn) likeBtn.addEventListener('click', toggleLike);
-
     const progressTrack = document.getElementById('progressTrack');
     if (progressTrack) {
         progressTrack.addEventListener('click', (e) => {
@@ -461,23 +446,6 @@ function setupEventListeners() {
     const editPlBtn = document.getElementById('confirmEditPlaylistBtn');
     if (editPlBtn) editPlBtn.addEventListener('click', confirmEditPlaylist);
 
-    const fsPlayPause = document.getElementById('fsPlayPause');
-    if (fsPlayPause) fsPlayPause.addEventListener('click', togglePlayPause);
-    
-    const fsNext = document.getElementById('fsNext');
-    if (fsNext) fsNext.addEventListener('click', playNext);
-    
-    const fsPrev = document.getElementById('fsPrev');
-    if (fsPrev) fsPrev.addEventListener('click', playPrev);
-    
-    const fsShuffle = document.getElementById('fsShuffle');
-    if (fsShuffle) fsShuffle.addEventListener('click', toggleShuffle);
-    
-    const fsRepeat = document.getElementById('fsRepeat');
-    if (fsRepeat) fsRepeat.addEventListener('click', cycleRepeat);
-    
-    const fsLike = document.getElementById('fsLike');
-    if (fsLike) fsLike.addEventListener('click', toggleLike);
     const fsProgressTrack = document.getElementById('fsProgressTrack');
     if (fsProgressTrack) {
         fsProgressTrack.addEventListener('click', (e) => {
@@ -599,7 +567,10 @@ function updateFullscreenTint(imageUrl) {
         }
         r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        if (brightness > 175) {
+        const maxComponent = Math.max(r, g, b);
+        
+        // Trigger bright-bg if brightness is high OR if color is very vibrant
+        if (brightness > 175 || (maxComponent > 220 && brightness > 100)) {
             fs.classList.add('bright-bg');
         } else {
             fs.classList.remove('bright-bg');
