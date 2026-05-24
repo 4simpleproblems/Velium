@@ -599,6 +599,12 @@ function updateFullscreenTint(imageUrl) {
         }
         r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        if (brightness > 175) {
+            fs.classList.add('bright-bg');
+        } else {
+            fs.classList.remove('bright-bg');
+        }
+        
         let tintColor, progressBg, accentColor;
         if (brightness < 160) {
             tintColor = 'rgba(255, 255, 255, 1)';
@@ -840,6 +846,7 @@ async function searchPrevPage() {
 function renderTrackGrid(tracks, container, parentList = null) {
     if (!container) return;
     const isSearchView = container.id === 'searchGrid';
+    const isHomeView = container.id === 'popularTracks';
     
     tracks.forEach((track) => {
         const trackUid = getTrackUid(track);
@@ -850,7 +857,7 @@ function renderTrackGrid(tracks, container, parentList = null) {
         card.innerHTML = `
             <div style="position: relative; overflow: hidden; margin-bottom: 16px;">
                 <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy" style="margin-bottom: 0;">
-                ${isSearchView ? '' : `
+                ${(isSearchView || isHomeView) ? '' : `
                 <button class="card-plus-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; border-radius: 50% !important; width: 30px; height: 30px; color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; cursor: pointer;" title="Add to Playlist">
                     <i class="fa-solid fa-plus" style="font-size: 14px;"></i>
                 </button>
