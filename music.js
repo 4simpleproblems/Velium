@@ -40,6 +40,14 @@ function getProxyUrl(url, size = null) {
             url = url.replace(/_([0-9]+x[0-9]+|150|500)\.jpg/i, `_250x250.jpg`);
         }
     }
+    // High quality for Google/YouTube images
+    if (url.includes('googleusercontent.com') || url.includes('ggpht.com')) {
+        if (size === '500x500' || size === '1000x1000') {
+            url = url.replace(/=s[0-9]+/, '=s1000');
+        } else if (size === '50x50') {
+            url = url.replace(/=s[0-9]+/, '=s50');
+        }
+    }
     if (url.startsWith('//')) url = 'https:' + url;
     const prefix = (window.__uv$config && window.__uv$config.prefix) || "/v-proxy/service/";
     const encode = (window.__uv$config && window.__uv$config.encodeUrl) || (window.Ultraviolet && window.Ultraviolet.codec && window.Ultraviolet.codec.xor && window.Ultraviolet.codec.xor.encode);
@@ -518,11 +526,20 @@ function updateFullscreenUI() {
         window.toggleFullscreenPlayer();
         loadArtistView(currentTrack.artist_name);
     };
-    const artworkUrl = currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url);
+    
+    // High quality for foreground artwork
+    const artworkUrl = currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url, '500x500');
     document.getElementById('fsArtwork').src = artworkUrl;
+    
+    // Lower quality for blurred background
     const bgUrl = currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url, '50x50');
     const bg = document.getElementById('fsBackground');
-    if (bg) { bg.style.backgroundImage = `url('${bgUrl}')`; bg.style.backgroundSize = 'cover'; bg.style.backgroundPosition = 'center'; }
+    if (bg) {
+        bg.style.backgroundImage = `url('${bgUrl}')`;
+        bg.style.backgroundSize = 'cover';
+        bg.style.backgroundPosition = 'center';
+    }
+    
     updateFullscreenTint(artworkUrl);
     document.getElementById('fsShuffle').classList.toggle('active', isShuffle);
     const fsRepeat = document.getElementById('fsRepeat');
@@ -910,6 +927,15 @@ let activeSource = 'youtube';
 async function playTrack(index) {
     currentIndex = index;
     currentTrack = playlist[currentIndex];
+    
+    // Clear current lyrics UI and state immediately
+    parsedLyrics = [];
+    const panelContent = document.getElementById('panelContent');
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    const loadingHtml = '<div class="py-10 text-center"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
+    if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
+    if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
+
     if (isShuffle) {
         const sIndex = shuffledIndices.indexOf(index);
         if (sIndex > -1) shuffledCurrentIndex = sIndex;
