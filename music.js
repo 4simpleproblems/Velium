@@ -1516,13 +1516,15 @@ function showAddToPlaylistModal(track) {
     } else {
         playlists.forEach(pl => {
             const item = document.createElement('div');
-            item.className = 'flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 cursor-pointer border border-transparent hover:border-brand-border transition-all';
+            item.className = 'playlist-item';
             item.style.marginBottom = '8px';
             item.innerHTML = `
-                <div class="w-10 h-10 bg-card-dark rounded-lg flex items-center justify-center flex-shrink-0" style="${pl.color ? `background: linear-gradient(135deg, ${pl.color}, var(--bg-highlight));` : ''}">
-                    ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover rounded-lg">` : `<i class="fas fa-list text-gray-700"></i>`}
+                <div class="pl-img" style="${pl.color ? `background: linear-gradient(135deg, ${pl.color}, var(--bg-highlight));` : ''} width: 40px; height: 40px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas fa-list" style="color: #666;"></i>`}
                 </div>
-                <div class="flex-1 font-bold text-white truncate">${escapeHtml(pl.name)}</div>
+                <div class="pl-info" style="flex: 1; min-w: 0;">
+                    <div class="pl-name" style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(pl.name)}</div>
+                </div>
             `;
             item.onclick = () => addTrackToPlaylist(track, pl.id);
             list.appendChild(item);
