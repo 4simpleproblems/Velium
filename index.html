@@ -622,6 +622,9 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 0 !important; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.5); }
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -680,7 +683,7 @@
         </div>
       </div>
     </section>
-    <section class="view" id="searchView" style="display: none; padding: 40px 32px;">
+    <section class="view" id="searchView" style="padding: 40px 32px;">
       <div style="margin-bottom: 40px; display: flex; flex-direction: column; align-items: center;">
         <h1 style="font-size: 48px; font-weight: 800; margin-bottom: 32px; text-align: center;">What do you want to listen to?</h1>
         <div class="search-box">
@@ -688,12 +691,12 @@
           <input type="text" id="searchInput" placeholder="Search for songs, artists, or albums">
         </div>
       </div>
-      <div id="searchResults" style="display: none;">
+      <div id="searchResults" class="hidden">
         <div class="track-section" style="padding: 0;">
           <h2 class="section-title">Search Results</h2>
           <div id="searchGrid" class="track-grid"></div>
         </div>
-        <div id="searchPagination" style="display: none; justify-content: center; align-items: center; gap: 24px; padding: 40px 0;">
+        <div id="searchPagination" class="hidden" style="justify-content: center; align-items: center; gap: 24px; padding: 40px 0;">
           <button id="prevPageBtn" class="btn-follow" style="visibility: hidden;">
             <i class="fa-solid fa-chevron-left" style="margin-right: 8px;"></i> Previous
           </button>
@@ -702,7 +705,7 @@
             Next <i class="fa-solid fa-chevron-right" style="margin-left: 8px;"></i>
           </button>
         </div>
-        <div id="searchLoader" style="display: none; text-align: center; padding: 32px 0;">
+        <div id="searchLoader" class="hidden" style="text-align: center; padding: 32px 0;">
           <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 32px; color: var(--text-main);"></i>
         </div>
       </div>
@@ -711,11 +714,11 @@
         <div class="categories-grid" id="categoriesGrid"></div>
       </div>
     </section>
-    <section class="view" id="libraryView" style="display: none; padding: 40px 32px;">
+    <section class="view" id="libraryView" style="padding: 40px 32px;">
       <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 40px;">Your Library</h1>
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px;" id="libraryContent"></div>
     </section>
-    <section class="view" id="favoritesView" style="display: none;">
+    <section class="view" id="favoritesView">
       <header class="hero-header" style="background: linear-gradient(to bottom, #4f46e5 0%, var(--bg-elevated) 100%);">
         <div class="artist-img" style="border-radius: 0% !important; background: linear-gradient(135deg, #4f46e5, #8b5cf6);">
           <i class="fa-solid fa-heart" style="color: #fff;"></i>

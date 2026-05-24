@@ -1042,6 +1042,10 @@ function loadAudioPlayer(url) {
 }
 function loadYouTubePlayer(videoId) {
     activeSource = 'youtube';
+    if (currentTrack) {
+        currentTrack.youtube_id = videoId;
+        currentTrack.videoId = videoId;
+    }
     let audio = document.getElementById('nativeAudio'); if (audio) audio.pause();
     if (window.YT && window.YT.Player) {
         if (player && typeof player.loadVideoById === 'function') { player.loadVideoById(videoId); player.playVideo(); }
@@ -1586,7 +1590,22 @@ async function fetchLyrics() {
     if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
     try {
-        const id = currentTrack.youtube_id || currentTrack.videoId || getTrackUid(currentTrack);
+        let id = currentTrack.youtube_id || currentTrack.videoId;
+        if (!id) {
+            const query = `${currentTrack.title} ${currentTrack.artist_name}`;
+            try {
+                const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
+                const searchData = await searchRes.json();
+                if (searchData.videoId) {
+                    id = searchData.videoId;
+                    currentTrack.youtube_id = id;
+                    currentTrack.videoId = id;
+                }
+            } catch (err) {
+                console.error("Failed resolving YouTube ID for lyrics:", err);
+            }
+        }
+        if (!id) id = getTrackUid(currentTrack);
         const response = await fetch(`${API_BASE_URL}/lyrics/${id}`);
         const data = await response.json();
         if (data.lyrics) {

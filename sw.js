@@ -47,10 +47,15 @@ self.addEventListener('fetch', event => {
                 }
             }
             if (shouldRoute) {
+                const decodedUrl = decodeURIComponent(targetEvent.request.url);
+                if (decodedUrl !== targetEvent.request.url) {
+                    targetEvent = Object.assign(Object.create(event), { request: new Request(decodedUrl, event.request) });
+                }
                 const unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
-                const isMedia = targetEvent.request.destination === 'image' ||
-                                targetEvent.request.destination === 'audio' ||
-                                unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i);
+                const isMedia = (targetEvent.request.destination === 'image' ||
+                                 targetEvent.request.destination === 'audio' ||
+                                 unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i)) &&
+                                !unroutedUrl.includes('?');
                 if (isMedia) {
                     try {
                         const headers = {};
