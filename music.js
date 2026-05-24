@@ -1579,6 +1579,15 @@ function updateLyricsSync(currentTime) {
         });
     }
 }
+function seekToLyrics(time) {
+    if (time === null || time === undefined) return;
+    if (activeSource === 'audio') {
+        const audio = document.getElementById('nativeAudio');
+        if (audio) audio.currentTime = time;
+    } else if (player && typeof player.seekTo === 'function') {
+        player.seekTo(time);
+    }
+}
 async function fetchLyrics() {
     const panelContent = document.getElementById('panelContent');
     const fsLyrics = document.querySelector('.fs-lyrics-container');
@@ -1590,25 +1599,56 @@ async function fetchLyrics() {
     if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
     try {
-        let id = currentTrack.youtube_id || currentTrack.videoId;
-        if (!id) {
-            const query = `${currentTrack.title} ${currentTrack.artist_name}`;
-            try {
-                const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-                const searchData = await searchRes.json();
-                if (searchData.videoId) {
-                    id = searchData.videoId;
-                    currentTrack.youtube_id = id;
-                    currentTrack.videoId = id;
-                }
-            } catch (err) {
-                console.error("Failed resolving YouTube ID for lyrics:", err);
+        let lyricsText = null;
+        try {
+            const trackName = currentTrack.title;
+            const artistName = currentTrack.artist_name;
+            let durationSec = 0;
+            if (currentTrack.duration) {
+                durationSec = currentTrack.duration > 1000 ? currentTrack.duration / 1000 : currentTrack.duration;
             }
+            let lrclibUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artistName)}&track_name=${encodeURIComponent(trackName)}`;
+            if (durationSec > 0) {
+                lrclibUrl += `&duration=${Math.round(durationSec)}`;
+            }
+            const lrclibRes = await fetch(lrclibUrl);
+            if (lrclibRes.ok) {
+                const lrclibData = await lrclibRes.json();
+                lyricsText = lrclibData.syncedLyrics || lrclibData.plainLyrics;
+            } else {
+                const lrclibSearchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(trackName + ' ' + artistName)}`);
+                if (lrclibSearchRes.ok) {
+                    const searchResults = await lrclibSearchRes.json();
+                    if (searchResults && searchResults.length > 0) {
+                        lyricsText = searchResults[0].syncedLyrics || searchResults[0].plainLyrics;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error(err);
         }
-        if (!id) id = getTrackUid(currentTrack);
-        const response = await fetch(`${API_BASE_URL}/lyrics/${id}`);
-        const data = await response.json();
-        if (data.lyrics) {
+        if (!lyricsText) {
+            let id = currentTrack.youtube_id || currentTrack.videoId;
+            if (!id) {
+                const query = `${currentTrack.title} ${currentTrack.artist_name}`;
+                try {
+                    const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
+                    const searchData = await searchRes.json();
+                    if (searchData.videoId) {
+                        id = searchData.videoId;
+                        currentTrack.youtube_id = id;
+                        currentTrack.videoId = id;
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            if (!id) id = getTrackUid(currentTrack);
+            const response = await fetch(`${API_BASE_URL}/lyrics/${id}`);
+            const data = await response.json();
+            lyricsText = data.lyrics;
+        }
+        if (lyricsText) {
             let duration = currentTrack.duration || 0;
             if (!duration) {
                 if (activeSource === 'audio') {
@@ -1618,8 +1658,14 @@ async function fetchLyrics() {
                     duration = player.getDuration();
                 }
             }
-            parsedLyrics = parseLyrics(data.lyrics, duration);
-            const html = parsedLyrics.map(line => `<div class="lyric-line">${escapeHtml(line.text)}</div>`).join('');
+            parsedLyrics = parseLyrics(lyricsText, duration);
+            const html = parsedLyrics.map(line => {
+                if (line.time !== null && line.time !== undefined) {
+                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})">${escapeHtml(line.text)}</div>`;
+                } else {
+                    return `<div class="lyric-line">${escapeHtml(line.text)}</div>`;
+                }
+            }).join('');
             if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
             if (fsLyrics) fsLyrics.innerHTML = html;
         } else {
@@ -1737,3 +1783,4 @@ window.playPrev = playPrev;
 window.togglePlayPause = togglePlayPause;
 window.playNext = playNext;
 window.cycleRepeat = cycleRepeat;
+window.seekToLyrics = seekToLyrics;

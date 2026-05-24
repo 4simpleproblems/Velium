@@ -37,29 +37,51 @@ self.addEventListener('fetch', event => {
                 if (isEncoded) {
                     encodedPart = url.split('hvtrs8')[1];
                     const fullProxyUrl = location.origin + prefix + 'hvtrs8' + encodedPart;
-                    targetEvent = Object.assign(Object.create(event), { request: new Request(fullProxyUrl, event.request) });
+                    const requestProxy = new Proxy(event.request, {
+                        get(target, prop) {
+                            if (prop === 'url') return fullProxyUrl;
+                            const val = target[prop];
+                            return typeof val === 'function' ? val.bind(target) : val;
+                        }
+                    });
+                    targetEvent = Object.assign(Object.create(event), { request: requestProxy });
                     shouldRoute = true;
                 } else if (isMediaDomain) {
                     const encoded = "hvtrs8" + Ultraviolet.codec.xor.encode(url).split('hvtrs8')[1];
                     const fullProxyUrl = location.origin + prefix + encoded;
-                    targetEvent = Object.assign(Object.create(event), { request: new Request(fullProxyUrl, event.request) });
+                    const requestProxy = new Proxy(event.request, {
+                        get(target, prop) {
+                            if (prop === 'url') return fullProxyUrl;
+                            const val = target[prop];
+                            return typeof val === 'function' ? val.bind(target) : val;
+                        }
+                    });
+                    targetEvent = Object.assign(Object.create(event), { request: requestProxy });
                     shouldRoute = true;
                 }
             }
             if (shouldRoute) {
                 const decodedUrl = decodeURIComponent(targetEvent.request.url);
                 if (decodedUrl !== targetEvent.request.url) {
-                    targetEvent = Object.assign(Object.create(event), { request: new Request(decodedUrl, event.request) });
+                    const requestProxy = new Proxy(targetEvent.request, {
+                        get(target, prop) {
+                            if (prop === 'url') return decodedUrl;
+                            const val = target[prop];
+                            return typeof val === 'function' ? val.bind(target) : val;
+                        }
+                    });
+                    targetEvent = Object.assign(Object.create(event), { request: requestProxy });
                 }
                 const unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
-                const isMedia = (targetEvent.request.destination === 'image' ||
+                const isMedia = unroutedUrl && (targetEvent.request.destination === 'image' ||
                                  targetEvent.request.destination === 'audio' ||
-                                 unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i)) &&
+                                 (typeof unroutedUrl === 'string' && unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i))) &&
                                 !unroutedUrl.includes('?');
                 if (isMedia) {
                     try {
                         const headers = {};
                         for (const [k, v] of targetEvent.request.headers.entries()) {
+                            if (['host', 'connection'].includes(k.toLowerCase())) continue;
                             headers[k] = v;
                         }
                         const response = await bareClient.fetch(unroutedUrl, {
