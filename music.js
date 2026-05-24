@@ -125,10 +125,11 @@ function getTrackUid(track) {
     if (track.youtube_id) return `ytm-${track.youtube_id}`;
     if (track.videoId) return `ytm-${track.videoId}`;
 
-    // Fallback to title/artist if no unique ID is found
+    // Fallback to title/artist/album if no unique ID is found
     const title = (track.title || track.name || '').trim().toLowerCase();
     const artist = (track.artist_name || track.artist || '').trim().toLowerCase();
-    return `f-${title}-${artist}`.replace(/[^a-z0-9]/g, '');
+    const album = (track.album_name || track.album || '').trim().toLowerCase();
+    return `f-${title}-${artist}-${album}`.replace(/[^a-z0-9]/g, '');
 }
 async function preloadTracks() {
     if (playlist.length === 0) return;
@@ -1014,11 +1015,15 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
         <div class="track-plus-col">
-            ${(isSearchView && !isPlaylistView) ? '' : `
-            <button class="row-action-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="${isPlaylistView ? 'Remove from Playlist' : 'Add to Playlist'}">
-                <i class="fa-solid ${isPlaylistView && playlistId !== 'favorites' ? 'fa-trash' : 'fa-plus'}" style="${isPlaylistView && playlistId !== 'favorites' ? 'color: #ef4444;' : ''}"></i>
+            ${(isPlaylistView && playlistId !== 'favorites') ? `
+            <button class="row-action-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="Remove from Playlist">
+                <i class="fa-solid fa-trash" style="color: #ef4444;"></i>
             </button>
-            `}
+            ` : (isPlaylistView ? `
+            <button class="row-action-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="Add to Playlist">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+            ` : '')}
         </div>
         <div class="track-duration">${formatTime(durationSec)}</div>
     `;
@@ -1063,6 +1068,18 @@ function removeFromPlaylist(trackUid, playlistId) {
     }
 }
 let activeSource = 'youtube';
+function setPlaybackLoading(isLoading) {
+    const pbControls = document.getElementById('playbackControls');
+    const pbLoading = document.getElementById('playbackLoading');
+    if (isLoading) {
+        if (pbControls) pbControls.classList.add('hidden');
+        if (pbLoading) pbLoading.classList.remove('hidden');
+    } else {
+        if (pbControls) pbControls.classList.remove('hidden');
+        if (pbLoading) pbLoading.classList.add('hidden');
+    }
+}
+
 async function playTrack(index) {
     currentIndex = index;
     currentTrack = playlist[currentIndex];
@@ -1076,10 +1093,7 @@ async function playTrack(index) {
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
 
     // Show loading state in bottom bar
-    const pbControls = document.getElementById('playbackControls');
-    const pbLoading = document.getElementById('playbackLoading');
-    if (pbControls) pbControls.classList.add('hidden');
-    if (pbLoading) pbLoading.classList.remove('hidden');
+    setPlaybackLoading(true);
 
     if (isShuffle) {
         const sIndex = shuffledIndices.indexOf(index);
@@ -1144,7 +1158,7 @@ async function playTrack(index) {
             loadYouTubePlayer(data.videoId);
             preloadTracks();
         }
-    } catch (e) { console.error('Failed to get video ID', e); }
+    } catch (e) { console.error('Failed to get video ID', e); setPlaybackLoading(false); }
 }
 function loadAudioPlayer(url) {
     activeSource = 'audio';
@@ -1153,17 +1167,22 @@ function loadAudioPlayer(url) {
     if (!audio) {
         audio = document.createElement('audio'); audio.id = 'nativeAudio';
         document.getElementById('audioElement').appendChild(audio);
-        audio.addEventListener('play', () => { 
+        
+        audio.addEventListener('playing', () => { 
             isPlaying = true; 
             updatePlayPauseUI(); 
             startProgressUpdate(); 
-            const pbControls = document.getElementById('playbackControls');
-            const pbLoading = document.getElementById('playbackLoading');
-            if (pbControls) pbControls.classList.remove('hidden');
-            if (pbLoading) pbLoading.classList.add('hidden');
+            setPlaybackLoading(false);
         });
-        audio.addEventListener('pause', () => { isPlaying = false; updatePlayPauseUI(); stopProgressUpdate(); });
+        audio.addEventListener('pause', () => { 
+            isPlaying = false; 
+            updatePlayPauseUI(); 
+            stopProgressUpdate(); 
+        });
+        audio.addEventListener('waiting', () => setPlaybackLoading(true));
+        audio.addEventListener('canplay', () => setPlaybackLoading(false));
         audio.addEventListener('ended', () => playNext());
+        
         let errorCount = 0;
         audio.addEventListener('error', async () => {
             errorCount++;
@@ -1182,7 +1201,7 @@ function loadAudioPlayer(url) {
                     const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
                     const data = await response.json();
                     if (data.videoId) loadYouTubePlayer(data.videoId);
-                } catch (e) { console.error('Fallback failed', e); }
+                } catch (e) { console.error('Fallback failed', e); setPlaybackLoading(false); }
             }
         });
         audio.addEventListener('timeupdate', () => {
@@ -1201,17 +1220,23 @@ function loadAudioPlayer(url) {
     }
     audio.src = url;
     audio.volume = volume / 100;
+    
+    setPlaybackLoading(true);
     const loadTimeout = setTimeout(() => {
         if (audio.readyState < 2 && activeSource === 'audio') {
             console.warn("Audio loading timed out, triggering fallback...");
             audio.dispatchEvent(new Event('error'));
         }
     }, 15000);
-    audio.oncanplay = () => clearTimeout(loadTimeout);
+    audio.oncanplay = () => { clearTimeout(loadTimeout); setPlaybackLoading(false); };
+    
     const playPromise = audio.play();
     if (playPromise !== undefined) {
         playPromise.catch(error => {
-            if (error.name !== 'AbortError') console.error('Playback failed:', error);
+            if (error.name !== 'AbortError') {
+                console.error('Playback failed:', error);
+                setPlaybackLoading(false);
+            }
         });
     }
 }
@@ -1944,9 +1969,13 @@ function parseLyrics(lyricsText, duration) {
 }
 function updateLyricsSync(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
+    
+    // Add a small lead-in offset so lyrics change slightly before they are said
+    const adjustedTime = currentTime + 0.3;
+    
     let activeIndex = -1;
     for (let i = 0; i < parsedLyrics.length; i++) {
-        if (currentTime >= parsedLyrics[i].time) {
+        if (adjustedTime >= parsedLyrics[i].time) {
             activeIndex = i;
         } else {
             break;
@@ -1974,7 +2003,7 @@ function updateLyricsSync(currentTime) {
                     const startTime = parsedLyrics[index].time;
                     const endTime = parsedLyrics[index].endTime;
                     const duration = endTime - startTime;
-                    const progress = (currentTime - startTime) / duration;
+                    const progress = (adjustedTime - startTime) / duration;
                     
                     dotEls.forEach((dot, i) => {
                         const threshold = (i + 1) / 4; // 3 dots, 4 segments
@@ -2131,15 +2160,15 @@ function renderQueue() {
         return;
     }
     let html = `
-        <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-main); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Now Playing</div>
-        <div class="queue-item" style="border: none; margin-bottom: 20px;">
-            <img src="${currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url)}" class="q-art">
-            <div style="display: flex; flex-direction: column; min-w-0; flex: 1;">
+        <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-main); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6;">Now Playing</div>
+        <div class="queue-item" style="border: none; margin-bottom: 24px; background: var(--bg-highlight); padding: 12px; border-radius: 8px;">
+            <img src="${currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url)}" class="q-art" style="width: 48px; height: 48px; border-radius: 4px; object-fit: cover;">
+            <div style="display: flex; flex-direction: column; min-width: 0; flex: 1; margin-left: 12px;">
                 <span style="font-weight: 700; color: var(--text-main); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(currentTrack.title)}</span>
                 <span style="font-size: 12px; color: var(--text-subdued); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(currentTrack.artist_name)}</span>
             </div>
         </div>
-        <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-main); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Next In Queue</div>
+        <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-main); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6;">Next In Queue</div>
     `;
     const upcoming = [];
     const maxItems = 15;
@@ -2160,9 +2189,9 @@ function renderQueue() {
     } else {
         upcoming.forEach((track) => {
             html += `
-                <div class="queue-item">
-                    <img src="${track.local_artwork || getProxyUrl(track.artwork_url)}" class="q-art">
-                    <div style="display: flex; flex-direction: column; min-w-0; flex: 1;">
+                <div class="queue-item" style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--divider);">
+                    <img src="${track.local_artwork || getProxyUrl(track.artwork_url)}" class="q-art" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">
+                    <div style="display: flex; flex-direction: column; min-width: 0; flex: 1; margin-left: 12px;">
                         <span style="font-weight: 700; color: var(--text-main); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(track.title)}</span>
                         <span style="font-size: 12px; color: var(--text-subdued); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(track.artist_name)}</span>
                     </div>
