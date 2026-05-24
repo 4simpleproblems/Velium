@@ -2024,7 +2024,9 @@ async function fetchLyrics() {
             const data = await response.json();
             lyricsText = data.lyrics;
         }
+        const fsMain = document.querySelector('.fs-main');
         if (lyricsText) {
+            if (fsMain) fsMain.classList.remove('no-lyrics');
             let duration = currentTrack.duration || 0;
             if (!duration) {
                 if (activeSource === 'audio') {
@@ -2054,12 +2056,15 @@ async function fetchLyrics() {
             if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
             if (fsLyrics) fsLyrics.innerHTML = html;
         } else {
+            if (fsMain) fsMain.classList.add('no-lyrics');
             parsedLyrics = [];
             const html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
             if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
             if (fsLyrics) fsLyrics.innerHTML = html;
         }
     } catch (e) {
+        const fsMain = document.querySelector('.fs-main');
+        if (fsMain) fsMain.classList.add('no-lyrics');
         parsedLyrics = [];
         const errHtml = '<div class="py-10 text-center" style="color: #ef4444;">Lyrics unavailable.</div>';
         if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = errHtml;
@@ -2126,8 +2131,13 @@ function togglePanel(type) {
         closePanel();
         return;
     }
+    
+    currentPanel = type;
+    window.currentPanel = type;
+
     if (btnLyrics) btnLyrics.classList.remove('active');
     if (btnQueue) btnQueue.classList.remove('active');
+    
     if (type === 'lyrics') {
         if (panelTitle) panelTitle.innerText = "Lyrics";
         if (btnLyrics) btnLyrics.classList.add('active');
@@ -2137,8 +2147,6 @@ function togglePanel(type) {
         if (btnQueue) btnQueue.classList.add('active');
         renderQueue();
     }
-    currentPanel = type;
-    window.currentPanel = type;
     body.classList.add('panel-active');
 }
 function closePanel() {

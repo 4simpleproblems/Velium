@@ -305,7 +305,16 @@
     .lyric-dots.active { opacity: 1; }
     .lyric-dot { width: 12px; height: 12px; background-color: rgba(255,255,255,0.2); border-radius: 50% !important; transition: all 0.3s; flex-shrink: 0; display: block; border: none !important; }
     .lyric-dot.highlight { background-color: #fff; transform: scale(1.5); }
-    .lyric-line { font-size: 24px; font-weight: 800; margin-bottom: 16px; transition: all 0.3s; color: var(--text-subdued); opacity: 0.3; cursor: pointer; }
+    .lyric-line {
+      font-family: 'Manrope', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      transition: all 0.3s;
+      color: var(--text-subdued);
+      opacity: 0.3;
+      cursor: pointer;
+    }
     .lyric-line.active { opacity: 1; color: var(--text-main); font-size: 32px; }
 
     .modal-color-picker { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
@@ -338,18 +347,41 @@
     .btn-flat { background: none; border: none; color: var(--text-main); font-weight: 700; cursor: pointer; padding: 8px 16px; }
     .btn-flat.primary { background-color: var(--text-main); color: #000; border-radius: 24px; padding: 12px 32px; }
     .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; overflow: hidden; transition: opacity 0.5s; padding: 40px; }
-    .fs-background { position: absolute; inset: 0; opacity: 0.4; filter: blur(60px); z-index: -1; transition: all 1s; }
-    .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; }
-    .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 0 40px; overflow: hidden; }
-    .fs-art-container { width: 450px; height: 450px; flex-shrink: 0; box-shadow: 0 20px 80px rgba(0,0,0,0.8); background: #222; }
+    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; overflow: hidden; transition: opacity 0.5s; padding: 40px; font-family: 'Manrope', sans-serif; }
+    .fs-background { 
+      position: absolute; 
+      inset: -10%; 
+      opacity: 0.6; 
+      filter: blur(80px) saturate(1.8); 
+      z-index: -2; 
+      transition: background-image 1s ease-in-out;
+      background-size: cover;
+      background-position: center;
+    }
+    .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; position: relative; z-index: 10; }
+    .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 0 40px; overflow: hidden; transition: all 0.5s ease; }
+    .fs-main.no-lyrics { flex-direction: column; gap: 40px; }
+    .fs-main.no-lyrics .fs-lyrics-container { display: none; }
+    .fs-main.no-lyrics .fs-art-container { width: 500px; height: 500px; }
+    
+    .fs-art-container { width: 450px; height: 450px; flex-shrink: 0; box-shadow: 0 20px 80px rgba(0,0,0,0.8); background: #222; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     .fs-art-container img { width: 100%; height: 100%; object-fit: cover; }
-    .fs-lyrics-container { flex: 1; display: flex; flex-direction: column; gap: 32px; max-height: 60vh; overflow-y: auto; text-align: left; }
-    .fs-lyrics-container .lyric-line { font-size: 32px; line-height: 1.2; }
+    .fs-lyrics-container { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 32px; 
+      max-height: 60vh; 
+      overflow-y: auto; 
+      text-align: left;
+      font-family: 'Manrope', sans-serif;
+    }
+    .fs-lyrics-container .lyric-line { font-size: 32px; line-height: 1.2; opacity: 0.2; }
     .fs-lyrics-container .active { font-size: 48px; color: #fff; opacity: 1; }
-    .fs-controls-container { width: 100%; max-width: 800px; margin: 20px auto 40px auto; display: flex; flex-direction: column; gap: 20px; }
+    .fs-controls-container { width: 100%; max-width: 800px; margin: 20px auto 40px auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 10; }
     .fs-meta { text-align: left; margin-bottom: 10px; }
-    .fs-meta .np-title { font-size: 32px; margin-bottom: 4px; }
-    .fs-meta .np-artist { font-size: 18px; color: #aaa; }
+    .fs-meta .np-title { font-size: 32px; font-weight: 800; }
+    .fs-meta .np-artist { font-size: 18px; color: rgba(255,255,255,0.6); }
     
     #startup-loader { position: fixed; inset: 0; z-index: 999999; background-color: var(--bg-base); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s; }
     #startup-loader.hidden { opacity: 0; visibility: hidden; }
@@ -481,6 +513,7 @@
   </footer>
   <div id="fsPlayer" class="fullscreen-overlay">
     <div id="fsBackground" class="fs-background"></div>
+    <div class="fs-blur-overlay"></div>
     <div class="fs-top-bar">
       <div class="brand-logo" style="padding: 0;"><i class="fa-solid fa-record-vinyl"></i> VELIUM</div>
       <button class="ctrl-btn" onclick="toggleFullscreenPlayer()"><i class="fa-solid fa-compress fa-lg"></i></button>
