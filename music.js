@@ -466,9 +466,9 @@ function setupEventListeners() {
     }
     document.addEventListener('fullscreenchange', () => {
         if (!document.fullscreenElement) {
-            const fs = document.getElementById('fullscreenPlayer');
-            if (fs && !fs.classList.contains('hidden')) {
-                fs.classList.add('hidden');
+            const fs = document.getElementById('fsPlayer');
+            if (fs && fs.style.display === 'flex') {
+                fs.style.display = 'none';
                 document.body.style.overflow = '';
             }
         }
@@ -499,26 +499,26 @@ function setupEventListeners() {
     });
 }
 window.toggleFullscreenPlayer = function() {
-    const fs = document.getElementById('fullscreenPlayer');
+    const fs = document.getElementById('fsPlayer');
     if (!fs) return;
-    if (fs.classList.contains('hidden')) {
+    if (fs.style.display !== 'flex') {
         if (!currentTrack) {
             showToast('No track playing', 'info');
             return;
         }
-        fs.classList.remove('hidden');
+        fs.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
         updateFullscreenUI();
     } else {
-        fs.classList.add('hidden');
+        fs.style.display = 'none';
         document.body.style.overflow = '';
         if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
     }
 };
 function closeFullscreenIfNoTrack() {
-    const fs = document.getElementById('fullscreenPlayer');
-    if (fs && !fs.classList.contains('hidden')) {
+    const fs = document.getElementById('fsPlayer');
+    if (fs && fs.style.display === 'flex') {
         window.toggleFullscreenPlayer();
     }
 }
@@ -546,7 +546,7 @@ function updateFullscreenUI() {
     if (fsPlayBtn) fsPlayBtn.innerHTML = isPlaying ? '<i class="fas fa-pause text-4xl lg:text-6xl text-black"></i>' : '<i class="fas fa-play text-4xl lg:text-6xl ml-1 text-black"></i>';
 }
 function updateFullscreenTint(imageUrl) {
-    const fs = document.getElementById('fullscreenPlayer');
+    const fs = document.getElementById('fsPlayer');
     if (!fs || !imageUrl) return;
     const img = new Image();
     img.crossOrigin = "Anonymous";
@@ -939,7 +939,7 @@ async function playTrack(index) {
     artwork.classList.remove('hidden');
     document.getElementById('artworkPlaceholder').classList.add('hidden');
     updateLikeButtonStatus();
-    if (!document.getElementById('fullscreenPlayer').classList.contains('hidden')) updateFullscreenUI();
+    if (document.getElementById('fsPlayer').style.display === 'flex') updateFullscreenUI();
     if (window.currentPanel === 'lyrics') fetchLyrics();
     if (window.currentPanel === 'queue') renderQueue();
     document.getElementById('progressBarFill').style.width = '0%';
@@ -1565,7 +1565,7 @@ function updateLyricsSync(currentTime) {
         });
     }
     const fsLyrics = document.querySelector('.fs-lyrics-container');
-    if (fsLyrics && !document.getElementById('fullscreenPlayer').classList.contains('hidden')) {
+    if (fsLyrics && document.getElementById('fsPlayer').style.display === 'flex') {
         const lines = fsLyrics.querySelectorAll('.lyric-line');
         lines.forEach((line, index) => {
             if (index === activeIndex) {

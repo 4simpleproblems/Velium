@@ -79,10 +79,25 @@ self.addEventListener('fetch', event => {
                                 !unroutedUrl.includes('?');
                 if (isMedia) {
                     try {
+                        const STRIP_HEADERS = new Set([
+                            "origin", "referer", "host", "x-forwarded-for",
+                            "x-real-ip", "cf-connecting-ip", "cf-ray",
+                            "x-forwarded-proto", "x-forwarded-host", "connection"
+                        ]);
                         const headers = {};
                         for (const [k, v] of targetEvent.request.headers.entries()) {
-                            if (['host', 'connection'].includes(k.toLowerCase())) continue;
-                            headers[k] = v;
+                            if (!STRIP_HEADERS.has(k.toLowerCase())) {
+                                headers[k] = v;
+                            }
+                        }
+                        headers["user-agent"] = navigator.userAgent;
+                        headers["accept"] = headers["accept"] || "*/*";
+                        headers["accept-language"] = headers["accept-language"] || "en-US,en;q=0.9";
+                        if (unroutedUrl.includes("argon.global.ssl.fastly.net") ||
+                            unroutedUrl.includes("soundcloud.com") ||
+                            unroutedUrl.includes("sndcdn.com")) {
+                            headers["origin"] = "https://soundcloud.com";
+                            headers["referer"] = "https://soundcloud.com/";
                         }
                         const response = await bareClient.fetch(unroutedUrl, {
                             headers,
