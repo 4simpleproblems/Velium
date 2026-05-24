@@ -118,12 +118,16 @@ function showToast(message, type = 'info') {
 }
 function getTrackUid(track) {
     if (!track) return null;
+    
+    // Stable ID if it already exists
+    if (track.stable_id) return track.stable_id;
+    if (track.id && !track.id.includes('gen-')) return track.id;
     if (track.youtube_id) return `ytm-${track.youtube_id}`;
-    if (track.id && (track.id.startsWith('ytm-') || track.id.startsWith('saavn-')) && !track.id.includes('gen-')) {
-        return track.id;
-    }
+    if (track.videoId) return `ytm-${track.videoId}`;
+
+    // Fallback to title/artist if no unique ID is found
     const title = (track.title || track.name || '').trim().toLowerCase();
-    const artist = (track.artist_name || '').trim().toLowerCase();
+    const artist = (track.artist_name || track.artist || '').trim().toLowerCase();
     return `f-${title}-${artist}`.replace(/[^a-z0-9]/g, '');
 }
 async function preloadTracks() {
@@ -374,16 +378,26 @@ function setupEventListeners() {
             }
         });
     }
-    const nextBtn = document.getElementById('nextPageBtn');
+    const nextBtn = document.getElementById('nextButton');
     const prevBtn = document.getElementById('prevPageBtn');
     if (nextBtn) nextBtn.addEventListener('click', searchNextPage);
     if (prevBtn) prevBtn.addEventListener('click', searchPrevPage);
-    document.getElementById('playPauseButton').addEventListener('click', togglePlayPause);
-    document.getElementById('nextButton').addEventListener('click', playNext);
-    document.getElementById('prevButton').addEventListener('click', playPrev);
-    document.getElementById('shuffleButton').addEventListener('click', toggleShuffle);
-    document.getElementById('repeatButton').addEventListener('click', cycleRepeat);
-    document.getElementById('likeButton').addEventListener('click', toggleLike);
+
+    const playPauseBtn = document.getElementById('playPauseButton');
+    if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlayPause);
+    
+    const globalNextBtn = document.getElementById('nextButtonGlobal'); // In case it exists
+    if (globalNextBtn) globalNextBtn.addEventListener('click', playNext);
+
+    const shuffleBtn = document.getElementById('shuffleButton');
+    if (shuffleBtn) shuffleBtn.addEventListener('click', toggleShuffle);
+    
+    const repeatBtn = document.getElementById('repeatButton');
+    if (repeatBtn) repeatBtn.addEventListener('click', cycleRepeat);
+    
+    const likeBtn = document.getElementById('likeButton');
+    if (likeBtn) likeBtn.addEventListener('click', toggleLike);
+
     const progressTrack = document.getElementById('progressTrack');
     if (progressTrack) {
         progressTrack.addEventListener('click', (e) => {
@@ -397,6 +411,7 @@ function setupEventListeners() {
             }
         });
     }
+
     const volumeSlider = document.getElementById('volumeSlider');
     if (volumeSlider) {
         volumeSlider.addEventListener('input', (e) => {
@@ -407,7 +422,26 @@ function setupEventListeners() {
             } else if (player && typeof player.setVolume === 'function') {
                 player.setVolume(volume);
             }
-            document.getElementById('volumeBarFill').style.width = volume + '%';
+            const volumeBarFill = document.getElementById('volumeBarFill');
+            if (volumeBarFill) volumeBarFill.style.width = volume + '%';
+            saveToStorage('volume', volume);
+        });
+    }
+
+    const volumeTrack = document.getElementById('volumeTrack');
+    if (volumeTrack) {
+        volumeTrack.addEventListener('click', (e) => {
+            const rect = volumeTrack.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            volume = Math.round(percent * 100);
+            if (activeSource === 'audio') {
+                const audio = document.getElementById('nativeAudio');
+                if (audio) audio.volume = volume / 100;
+            } else if (player && typeof player.setVolume === 'function') {
+                player.setVolume(volume);
+            }
+            const volumeBarFill = document.getElementById('volumeBarFill');
+            if (volumeBarFill) volumeBarFill.style.width = volume + '%';
             saveToStorage('volume', volume);
         });
     }
@@ -780,7 +814,7 @@ async function searchPrevPage() {
 }
 function renderTrackGrid(tracks, container, parentList = null) {
     if (!container) return;
-    tracks.forEach((track, index) => {
+    tracks.forEach((track) => {
         const trackUid = getTrackUid(track);
         const card = document.createElement('div');
         card.className = 'track-card';
@@ -814,12 +848,11 @@ function renderTrackGrid(tracks, container, parentList = null) {
                 originalPlaylist = [...tracks];
             }
             
-            const searchIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
-            currentIndex = (searchIndex > -1) ? searchIndex : index;
-            
-            preloadedNextTrack = null;
-            preloadedPrevTrack = null;
-            playTrack(currentIndex);
+            const freshIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
+            if (freshIndex > -1) {
+                currentIndex = freshIndex;
+                playTrack(currentIndex);
+            }
         });
         container.appendChild(card);
     });
@@ -1329,13 +1362,13 @@ async function loadPlaylistView(playlistId) {
     container.innerHTML = `
         <header class="hero-header" style="background: linear-gradient(to bottom, ${playlistColor} 0%, var(--bg-elevated) 100%);">
             <div class="artist-img playlist-art-container" style="border-radius: 0% !important; position: relative; overflow: hidden; cursor: pointer;" onclick="showPlaylistCoverUploadModal('${pl.id}')">
-                ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-music"></i>`}
-                <div class="art-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: ${pl.cover_url ? '0' : '1'}; transition: opacity 0.2s; visibility: ${pl.cover_url ? 'hidden' : 'visible'};">
-                    <i class="fas fa-camera text-white text-2xl"></i>
+                ${pl.cover_url ? `<img src="${getProxyUrl(pl.cover_url)}" class="w-full h-full object-cover">` : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;"><i class="fa-solid fa-music"></i></div>`}
+                <div class="art-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+                    <i class="fas fa-camera text-white text-3xl"></i>
                 </div>
             </div>
             <style>
-                .playlist-art-container:hover .art-overlay { opacity: 1 !important; visibility: visible !important; }
+                .playlist-art-container:hover .art-overlay { opacity: 1 !important; }
             </style>
             <div class="hero-meta">
                 <div class="verified-badge">Playlist</div>
@@ -1547,6 +1580,9 @@ async function addTrackToPlaylist(track, playlistId) {
 
         // Deep clone track and ensure critical IDs are preserved
         const trackToSave = JSON.parse(JSON.stringify(track));
+        
+        // Lock in the UID as a stable_id to prevent any future mismatch
+        trackToSave.stable_id = trackUid;
         
         let durationSec = 0;
         if (trackToSave.duration) durationSec = trackToSave.duration > 10000 ? trackToSave.duration / 1000 : trackToSave.duration;

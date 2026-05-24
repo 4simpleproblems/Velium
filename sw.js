@@ -53,7 +53,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         (async () => {
             // Auto-proxy certain domains or encoded URLs even if prefix is missing
-            const isEncoded = url.includes('hvtrs8');
+            const isEncoded = url.includes('/hvtrs8');
             const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com') || url.includes('scdn.co') || url.includes('mzstatic.com');
             
             let targetEvent = event;
@@ -63,14 +63,15 @@ self.addEventListener('fetch', event => {
                 let encodedPart = "";
                 if (isEncoded) {
                     encodedPart = url.split('hvtrs8')[1];
-                    // Reconstruct with proper prefix
                     const fullProxyUrl = location.origin + prefix + 'hvtrs8' + encodedPart;
-                    targetEvent = Object.assign(Object.create(event), { request: new Request(fullProxyUrl, event.request) });
+                    targetEvent = Object.create(event);
+                    Object.defineProperty(targetEvent, 'request', { value: new Request(fullProxyUrl, event.request) });
                     shouldRoute = true;
                 } else if (isMediaDomain) {
                     const encoded = "hvtrs8" + Ultraviolet.codec.xor.encode(url).split('hvtrs8')[1];
                     const fullProxyUrl = location.origin + prefix + encoded;
-                    targetEvent = Object.assign(Object.create(event), { request: new Request(fullProxyUrl, event.request) });
+                    targetEvent = Object.create(event);
+                    Object.defineProperty(targetEvent, 'request', { value: new Request(fullProxyUrl, event.request) });
                     shouldRoute = true;
                 }
             }
