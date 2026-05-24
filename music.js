@@ -447,18 +447,34 @@ function setupEventListeners() {
     }
     const createPlaylistBtn = document.querySelector('.create-playlist-btn');
     if (createPlaylistBtn) createPlaylistBtn.addEventListener('click', showCreatePlaylistModal);
-    document.getElementById('savePlaylistBtn').addEventListener('click', () => {
-        createPlaylist(document.getElementById('playlistNameInput').value.trim(), document.getElementById('playlistDescInput').value.trim());
-        hideCreatePlaylistModal();
-    });
-    document.getElementById('confirmEditPlaylistBtn').addEventListener('click', confirmEditPlaylist);
+    const savePlBtn = document.getElementById('savePlaylistBtn');
+    if (savePlBtn) {
+        savePlBtn.addEventListener('click', () => {
+            createPlaylist(document.getElementById('playlistNameInput').value.trim(), document.getElementById('playlistDescInput').value.trim());
+            hideCreatePlaylistModal();
+        });
+    }
 
-    document.getElementById('fsPlayPause').addEventListener('click', togglePlayPause);
-    document.getElementById('fsNext').addEventListener('click', playNext);
-    document.getElementById('fsPrev').addEventListener('click', playPrev);
-    document.getElementById('fsShuffle').addEventListener('click', toggleShuffle);
-    document.getElementById('fsRepeat').addEventListener('click', cycleRepeat);
-    document.getElementById('fsLike').addEventListener('click', toggleLike);
+    const editPlBtn = document.getElementById('confirmEditPlaylistBtn');
+    if (editPlBtn) editPlBtn.addEventListener('click', confirmEditPlaylist);
+
+    const fsPlayPause = document.getElementById('fsPlayPause');
+    if (fsPlayPause) fsPlayPause.addEventListener('click', togglePlayPause);
+    
+    const fsNext = document.getElementById('fsNext');
+    if (fsNext) fsNext.addEventListener('click', playNext);
+    
+    const fsPrev = document.getElementById('fsPrev');
+    if (fsPrev) fsPrev.addEventListener('click', playPrev);
+    
+    const fsShuffle = document.getElementById('fsShuffle');
+    if (fsShuffle) fsShuffle.addEventListener('click', toggleShuffle);
+    
+    const fsRepeat = document.getElementById('fsRepeat');
+    if (fsRepeat) fsRepeat.addEventListener('click', cycleRepeat);
+    
+    const fsLike = document.getElementById('fsLike');
+    if (fsLike) fsLike.addEventListener('click', toggleLike);
     const fsProgressTrack = document.getElementById('fsProgressTrack');
     if (fsProgressTrack) {
         fsProgressTrack.addEventListener('click', (e) => {
