@@ -356,6 +356,11 @@ async function initApp() {
         const adminTab = document.getElementById('admin-test-tab');
         if (adminTab) adminTab.classList.remove('hidden');
     }
+    const loader = document.getElementById('startup-loader');
+    if (loader) {
+        loader.classList.add('hidden');
+        console.log("VELIUM: App Ready, hiding loader");
+    }
 }
 function setupEventListeners() {
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -433,7 +438,8 @@ function setupEventListeners() {
             saveToStorage('volume', volume);
         });
     }
-    document.querySelector('.create-playlist-btn').addEventListener('click', showCreatePlaylistModal);
+    const createPlaylistBtn = document.querySelector('.create-playlist-btn');
+    if (createPlaylistBtn) createPlaylistBtn.addEventListener('click', showCreatePlaylistModal);
     document.getElementById('savePlaylistBtn').addEventListener('click', () => {
         createPlaylist(document.getElementById('playlistNameInput').value.trim(), document.getElementById('playlistDescInput').value.trim());
         hideCreatePlaylistModal();

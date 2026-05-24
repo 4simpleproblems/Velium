@@ -55,6 +55,13 @@
             ]);
             console.log("VELIUM: BareMux Transport Active (Local)");
             const bc = new BroadcastChannel("bare-mux-sync");
+            const hideLoader = () => {
+                const loader = document.getElementById('startup-loader');
+                if (loader && !loader.classList.contains('hidden')) {
+                    loader.classList.add('hidden');
+                    console.log("VELIUM: Proxy Ready, hiding loader");
+                }
+            };
             const signalReady = () => {
                 const msg = { type: 'baremuxready', path: workerPath };
                 bc.postMessage(msg);
@@ -72,9 +79,11 @@
                         }
                     });
                 });
+                hideLoader();
             };
             signalReady();
             console.log("VELIUM: BareMux Ready Signal Sent");
+            setTimeout(hideLoader, 5000);
         } catch (e) {
             console.error("BareMux Init Failed", e);
         }
