@@ -748,14 +748,11 @@ async function handleSearch(query, append = false, forcedOffset = null) {
         currentSearchResults.push(...newTracks);
         if (!append && tracksGrid) tracksGrid.innerHTML = '';
         if (tracksGrid && newTracks.length > 0) {
-            newTracks.forEach(track => {
+            const filteredTracks = newTracks.filter(track => {
                 const trackUid = getTrackUid(track);
-                const existing = Array.from(tracksGrid.querySelectorAll('.track-card')).some(card => card.dataset.uid === trackUid);
-                if (!existing) {
-                    renderTrackGrid([track], tracksGrid);
-                    tracksGrid.lastElementChild.dataset.uid = trackUid;
-                }
+                return !Array.from(tracksGrid.querySelectorAll('.track-card')).some(card => card.dataset.uid === trackUid);
             });
+            renderTrackGrid(filteredTracks, tracksGrid, currentSearchResults);
             observeImages(tracksGrid);
         } else if (!append && tracksGrid) {
             tracksGrid.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500">No tracks found for this query.</div>';
@@ -801,29 +798,45 @@ async function searchPrevPage() {
     handleSearch(searchState.query, false, Math.max(0, target));
     document.querySelector('.main-view')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function renderTrackGrid(tracks, container) {
+function renderTrackGrid(tracks, container, parentList = null) {
     if (!container) return;
     tracks.forEach((track, index) => {
         const trackUid = getTrackUid(track);
         const card = document.createElement('div');
         card.className = 'track-card';
+        card.dataset.uid = trackUid;
         const artworkUrl = track.local_artwork || getProxyUrl(track.artwork_url);
         card.innerHTML = `
-            <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy">
+            <div style="position: relative; overflow: hidden; border-radius: 8px; aspect-ratio: 1/1;">
+                <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy">
+                <button class="card-plus-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; border-radius: 50%; width: 30px; height: 30px; color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; cursor: pointer;" title="Add to Playlist">
+                    <i class="fa-solid fa-plus" style="font-size: 14px;"></i>
+                </button>
+            </div>
             <div class="card-title">${escapeHtml(track.title)}</div>
             <div class="card-subtitle" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
         `;
+        
+        const plusBtn = card.querySelector('.card-plus-btn');
+        plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
+        card.onmouseenter = () => { plusBtn.style.opacity = '1'; };
+        card.onmouseleave = () => { plusBtn.style.opacity = '0'; };
+
         card.addEventListener('click', () => {
             if (container.id === 'searchGrid') {
                 playlist = [...currentSearchResults];
                 originalPlaylist = [...currentSearchResults];
-                const searchIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
-                currentIndex = (searchIndex > -1) ? searchIndex : index;
+            } else if (parentList) {
+                playlist = parentList;
+                originalPlaylist = [...parentList];
             } else {
                 playlist = tracks;
                 originalPlaylist = [...tracks];
-                currentIndex = index;
             }
+            
+            const searchIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
+            currentIndex = (searchIndex > -1) ? searchIndex : index;
+            
             preloadedNextTrack = null;
             preloadedPrevTrack = null;
             playTrack(currentIndex);
@@ -899,7 +912,7 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
     let durationSec = 0;
     if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
     else if (track.duration_seconds) durationSec = track.duration_seconds;
-    const isLiked = favorites.some(f => getTrackUid(f) === getTrackUid(track));
+    
     div.innerHTML = `
         <div class="track-num-col">
             <span class="row-num">${index + 1}</span>
@@ -913,10 +926,21 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
             </div>
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
+        <div class="track-plus-col" style="width: 40px; display: flex; justify-content: center;">
+            <button class="row-plus-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="Add to Playlist">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+        </div>
         <div class="track-duration">${formatTime(durationSec)}</div>
     `;
+
+    const plusBtn = div.querySelector('.row-plus-btn');
+    plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
+    div.onmouseenter = () => { plusBtn.style.opacity = '1'; };
+    div.onmouseleave = () => { plusBtn.style.opacity = '0'; };
+
     div.addEventListener('click', (e) => {
-        if (e.target.classList.contains('np-artist')) return;
+        if (e.target.closest('.np-artist') || e.target.closest('.row-plus-btn')) return;
         playlist = trackList;
         originalPlaylist = [...trackList];
         playTrack(index);
@@ -1796,9 +1820,12 @@ async function fetchLyrics() {
         if (panelContent) panelContent.innerHTML = '<div class="py-10 text-center">No track playing</div>';
         return;
     }
+
+    const playingWhenStarted = getTrackUid(currentTrack);
     const loadingHtml = '<div class="py-10 text-center"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
     if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
+
     try {
         let lyricsText = null;
         try {
@@ -1808,11 +1835,16 @@ async function fetchLyrics() {
             if (currentTrack.duration) {
                 durationSec = currentTrack.duration > 1000 ? currentTrack.duration / 1000 : currentTrack.duration;
             }
+            
+            if (getTrackUid(currentTrack) !== playingWhenStarted) return;
+
             let lrclibUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artistName)}&track_name=${encodeURIComponent(trackName)}`;
             if (durationSec > 0) {
                 lrclibUrl += `&duration=${Math.round(durationSec)}`;
             }
             const lrclibRes = await fetch(lrclibUrl);
+            if (getTrackUid(currentTrack) !== playingWhenStarted) return;
+
             if (lrclibRes.ok) {
                 const lrclibData = await lrclibRes.json();
                 lyricsText = lrclibData.syncedLyrics || lrclibData.plainLyrics;
