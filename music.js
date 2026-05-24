@@ -418,26 +418,6 @@ function setupEventListeners() {
         hideCreatePlaylistModal();
     });
     document.getElementById('confirmEditPlaylistBtn').addEventListener('click', confirmEditPlaylist);
-    
-    document.getElementById('playlistCoverInput').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const base64 = evt.target.result;
-            const artPreview = document.getElementById('editPlaylistArtPreview');
-            const artPlaceholder = document.getElementById('editPlaylistArtPlaceholder');
-            const removeBtn = document.getElementById('removeArtBtn');
-            
-            artPreview.src = base64;
-            artPreview.style.display = 'block';
-            artPlaceholder.style.display = 'none';
-            removeBtn.classList.add('show');
-            
-            renderColorPicker(document.getElementById('editPlaylistColor').value, base64);
-        };
-        reader.readAsDataURL(file);
-    });
 
     document.getElementById('fsPlayPause').addEventListener('click', togglePlayPause);
     document.getElementById('fsNext').addEventListener('click', playNext);
@@ -902,10 +882,10 @@ function renderFavorites() {
         return;
     }
     list.innerHTML = '';
-    favorites.forEach((track, index) => list.appendChild(createTrackRow(track, index, favorites, true)));
+    favorites.forEach((track, index) => list.appendChild(createTrackRow(track, index, favorites, true, 'favorites')));
     observeImages(list);
 }
-function createTrackRow(track, index, trackList, hideEllipsis = false) {
+function createTrackRow(track, index, trackList, hideEllipsis = false, playlistId = null) {
     const div = document.createElement('div');
     div.className = 'track-row';
     const trackUid = getTrackUid(track);
@@ -914,6 +894,8 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
     if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
     else if (track.duration_seconds) durationSec = track.duration_seconds;
     
+    const isPlaylistView = playlistId !== null;
+
     div.innerHTML = `
         <div class="track-num-col">
             <span class="row-num">${index + 1}</span>
@@ -928,20 +910,27 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
         <div class="track-plus-col">
-            <button class="row-plus-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="Add to Playlist">
-                <i class="fa-solid fa-plus"></i>
+            <button class="row-action-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="${isPlaylistView ? 'Remove from Playlist' : 'Add to Playlist'}">
+                <i class="fa-solid ${isPlaylistView ? 'fa-trash' : 'fa-plus'}" style="${isPlaylistView ? 'color: #ef4444;' : ''}"></i>
             </button>
         </div>
         <div class="track-duration">${formatTime(durationSec)}</div>
     `;
 
-    const plusBtn = div.querySelector('.row-plus-btn');
-    if (plusBtn) {
-        plusBtn.onclick = (e) => { e.stopPropagation(); showAddToPlaylistModal(track); };
+    const actionBtn = div.querySelector('.row-action-btn');
+    if (actionBtn) {
+        actionBtn.onclick = (e) => { 
+            e.stopPropagation(); 
+            if (isPlaylistView) {
+                removeFromPlaylist(trackUid, playlistId);
+            } else {
+                showAddToPlaylistModal(track); 
+            }
+        };
     }
 
     div.addEventListener('click', (e) => {
-        if (e.target.closest('.np-artist') || e.target.closest('.row-plus-btn')) return;
+        if (e.target.closest('.np-artist') || e.target.closest('.row-action-btn')) return;
         playlist = trackList;
         originalPlaylist = [...trackList];
         
@@ -950,6 +939,23 @@ function createTrackRow(track, index, trackList, hideEllipsis = false) {
         playTrack(freshIndex > -1 ? freshIndex : index);
     });
     return div;
+}
+
+function removeFromPlaylist(trackUid, playlistId) {
+    if (playlistId === 'favorites') {
+        const track = favorites.find(t => getTrackUid(t) === trackUid);
+        if (track) window.toggleLikeTrack(track);
+        return;
+    }
+    const plIndex = playlists.findIndex(p => p.id.toString() === playlistId.toString());
+    if (plIndex > -1) {
+        playlists[plIndex].tracks = playlists[plIndex].tracks.filter(t => getTrackUid(t) !== trackUid);
+        saveLibraryData();
+        renderSidebarPlaylists();
+        renderLibrary();
+        loadPlaylistView(playlistId);
+        showToast('Removed from playlist', 'info');
+    }
 }
 let activeSource = 'youtube';
 async function playTrack(index) {
@@ -1350,7 +1356,7 @@ async function loadPlaylistView(playlistId) {
     const list = document.getElementById('dynamicList');
     if (pl.tracks.length === 0) list.innerHTML = '<div style="padding: 40px 0; text-align: center; opacity: 0.5;">This playlist is empty. Add some songs!</div>';
     else {
-        pl.tracks.forEach((track, index) => list.appendChild(createTrackRow(track, index, pl.tracks, true)));
+        pl.tracks.forEach((track, index) => list.appendChild(createTrackRow(track, index, pl.tracks, true, pl.id)));
         observeImages(list);
     }
     currentDynamicPlaylist = pl.tracks;
@@ -1530,23 +1536,32 @@ function hideAddToPlaylistModal() {
 async function addTrackToPlaylist(track, playlistId) {
     const plIndex = playlists.findIndex(p => p.id.toString() === playlistId.toString());
     if (plIndex > -1) {
-        let durationSec = 0;
-        if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
-        else if (track.duration_seconds) durationSec = track.duration_seconds;
-        track.duration = durationSec;
         const trackUid = getTrackUid(track);
         if (playlists[plIndex].tracks.some(t => getTrackUid(t) === trackUid)) {
             showToast('Already in playlist', 'info');
             hideAddToPlaylistModal();
             return;
         }
-        playlists[plIndex].tracks.push(track);
+
+        // Deep clone track and ensure critical IDs are preserved
+        const trackToSave = JSON.parse(JSON.stringify(track));
+        
+        let durationSec = 0;
+        if (trackToSave.duration) durationSec = trackToSave.duration > 10000 ? trackToSave.duration / 1000 : trackToSave.duration;
+        else if (trackToSave.duration_seconds) durationSec = trackToSave.duration_seconds;
+        trackToSave.duration = durationSec;
+
+        playlists[plIndex].tracks.push(trackToSave);
         await saveLibraryData();
         renderSidebarPlaylists();
         renderLibrary();
+        
+        // Refresh view if currently viewing this playlist
         if (document.getElementById('dynamicView').classList.contains('active')) {
-            const currentViewTitle = document.querySelector('#dynamicView h1')?.textContent;
-            if (currentViewTitle === playlists[plIndex].name) loadPlaylistView(playlistId);
+            const currentHeader = document.querySelector('.artist-header');
+            if (currentHeader && currentHeader.textContent === playlists[plIndex].name) {
+                loadPlaylistView(playlistId);
+            }
         }
         showToast('Added to playlist', 'success');
     }
@@ -1642,7 +1657,11 @@ function initCropper() {
                 const scale = fixedHeight / cropperImage.height;
                 cropperCanvas.height = fixedHeight;
                 cropperCanvas.width = cropperImage.width * scale;
-                cropState = { x: cropperCanvas.width / 2, y: cropperCanvas.height / 2, radius: Math.min(cropperCanvas.width, cropperCanvas.height) / 3 };
+                cropState = {
+                    x: cropperCanvas.width / 2,
+                    y: cropperCanvas.height / 2,
+                    radius: Math.min(cropperCanvas.width, cropperCanvas.height) / 3
+                };
                 document.getElementById('cropperModal').style.display = 'flex';
                 requestAnimationFrame(drawCropper);
             };
@@ -1650,10 +1669,12 @@ function initCropper() {
         };
         reader.readAsDataURL(file);
     });
+
     document.getElementById('cancelCropBtn').addEventListener('click', () => {
         document.getElementById('cropperModal').style.display = 'none';
         document.getElementById('playlistCoverInput').value = '';
     });
+
     document.getElementById('submitCropBtn').addEventListener('click', async () => {
         const tempCanvas = document.createElement('canvas');
         const size = 512;
@@ -1666,17 +1687,34 @@ function initCropper() {
         const sourceSize = (cropState.radius * 2) / scale;
         tCtx.drawImage(cropperImage, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
         const base64 = tempCanvas.toDataURL('image/jpeg', 0.8);
+        
         const id = document.getElementById('uploadPlaylistId').value;
-        const pl = playlists.find(p => p.id.toString() === id.toString());
-        if (pl) {
-            updatePlaylist(pl.id, pl.name, pl.description, base64);
+        if (id) {
+            // Direct update
+            const pl = playlists.find(p => p.id.toString() === id.toString());
+            if (pl) {
+                updatePlaylist(pl.id, pl.name, pl.description, base64, pl.color);
+            }
+            document.getElementById('uploadPlaylistId').value = '';
         } else {
-            console.error('Playlist not found for ID:', id);
+            // Edit modal update
+            const artPreview = document.getElementById('editPlaylistArtPreview');
+            const artPlaceholder = document.getElementById('editPlaylistArtPlaceholder');
+            const removeBtn = document.getElementById('removeArtBtn');
+            
+            if (artPreview) {
+                artPreview.src = base64;
+                artPreview.style.display = 'block';
+                if (artPlaceholder) artPlaceholder.style.display = 'none';
+                if (removeBtn) removeBtn.classList.add('show');
+                renderColorPicker(document.getElementById('editPlaylistColor').value, base64);
+            }
         }
+
         document.getElementById('cropperModal').style.display = 'none';
         document.getElementById('playlistCoverInput').value = '';
     });
-}
+    }
 function showPlaylistCoverUploadModal(id) {
     document.getElementById('uploadPlaylistId').value = id;
     document.getElementById('playlistCoverInput').click();
