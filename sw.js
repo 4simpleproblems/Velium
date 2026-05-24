@@ -39,7 +39,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         (async () => {
             const isEncoded = url.includes('hvtrs8');
-            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net');
+            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com');
             let targetEvent = event;
             let shouldRoute = uv.route(event);
             if (!shouldRoute && (isEncoded || isMediaDomain)) {
@@ -83,10 +83,17 @@ self.addEventListener('fetch', event => {
                     targetEvent = cloneEventWithRequest(event, requestProxy);
                 }
                 const unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
-                const isMedia = unroutedUrl && (targetEvent.request.destination === 'image' ||
-                                 targetEvent.request.destination === 'audio' ||
-                                 (typeof unroutedUrl === 'string' && unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)$/i))) &&
-                                !unroutedUrl.includes('?');
+                const isMedia = unroutedUrl && (
+                    targetEvent.request.destination === 'image' ||
+                    targetEvent.request.destination === 'audio' ||
+                    unroutedUrl.includes('saavncdn.com') ||
+                    unroutedUrl.includes('soundcloud.com') ||
+                    unroutedUrl.includes('sndcdn.com') ||
+                    unroutedUrl.includes('fastly.net') ||
+                    unroutedUrl.includes('googleusercontent.com') ||
+                    unroutedUrl.includes('ggpht.com') ||
+                    unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)(\?|$)/i)
+                );
                 if (isMedia) {
                     try {
                         const STRIP_HEADERS = new Set([
