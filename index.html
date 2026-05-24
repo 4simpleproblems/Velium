@@ -274,6 +274,16 @@
     .track-plus-col { display: flex; align-items: center; justify-content: center; width: 32px; }
     .track-duration { text-align: right; color: var(--text-subdued); font-variant-numeric: tabular-nums; min-width: 50px; }
     
+    /* Playing Bar Animation */
+    .playing-bars { display: none; width: 24px; height: 24px; gap: 3px; align-items: flex-end; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; }
+    .playing-bars div { background-color: #fff; width: 4px; border-radius: 2px !important; animation: bar-bounce 1s infinite ease-in-out; }
+    .playing-bars div:nth-child(2) { animation-delay: 0.2s; }
+    .playing-bars div:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bar-bounce { 0%, 100% { height: 6px; } 50% { height: 20px; } }
+    .track-row.is-playing .playing-bars { display: flex; }
+    .track-row.is-playing .track-thumb { filter: brightness(0.4); }
+    .track-row.is-playing .row-num, .track-row.is-playing .row-play { display: none !important; }
+
     .right-panel { 
       grid-area: panel; 
       background-color: var(--bg-base); 
@@ -286,8 +296,8 @@
       transition: opacity 0.3s ease, visibility 0.3s;
     }
     body.panel-active .right-panel { visibility: visible; opacity: 1; }
-    .panel-header { padding: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--divider); }
-    .panel-title { font-weight: 800; color: var(--text-main); font-size: 18px; }
+    .panel-header { padding: 24px; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid var(--divider); }
+    .panel-title { font-weight: 800; color: var(--text-main); font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
     .panel-content { flex: 1; overflow-y: auto; padding: 24px; }
     .playbar { grid-area: playbar; background-color: var(--bg-highlight); border-top: 1px solid var(--divider); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 10; }
     .now-playing { display: flex; align-items: center; gap: 14px; width: 30%; min-width: 180px; }
@@ -310,7 +320,7 @@
       font-size: 24px;
       font-weight: 800;
       margin-bottom: 16px;
-      transition: all 0.3s;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
       color: var(--text-subdued);
       opacity: 0.3;
       cursor: pointer;
@@ -350,13 +360,15 @@
     .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; overflow: hidden; transition: opacity 0.5s; padding: 40px; font-family: 'Manrope', sans-serif; }
     .fs-background { 
       position: absolute; 
-      inset: -10%; 
-      opacity: 0.6; 
+      inset: -15% !important; 
+      opacity: 0.7; 
       filter: blur(80px) saturate(1.8); 
       z-index: -2; 
-      transition: background-image 1s ease-in-out;
+      transition: background-image 1.5s ease-in-out;
       background-size: cover;
       background-position: center;
+      width: 130% !important;
+      height: 130% !important;
     }
     .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; position: relative; z-index: 10; }
     .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 0 40px; overflow: hidden; transition: all 0.5s ease; }
@@ -488,17 +500,20 @@
       <button class="np-like" id="likeButton" onclick="toggleLike()"><i class="fa-regular fa-heart"></i></button>
     </div>
     <div class="player-controls">
-      <div class="control-buttons">
-        <button class="ctrl-btn" id="shuffleButton" onclick="toggleShuffle()"><i class="fa-solid fa-shuffle"></i></button>
-        <button class="ctrl-btn" id="prevButton" onclick="playPrev()"><i class="fa-solid fa-backward-step"></i></button>
-        <button class="ctrl-play" id="playPauseButton" onclick="togglePlayPause()"><i class="fa-solid fa-play" style="margin-left:2px;"></i></button>
-        <button class="ctrl-btn" id="nextButton" onclick="playNext()"><i class="fa-solid fa-forward-step"></i></button>
-        <button class="ctrl-btn" id="repeatButton" onclick="cycleRepeat()"><i class="fa-solid fa-repeat"></i></button>
-      </div>
-      <div class="playback-bar">
-        <span id="currentTimeLabel">0:00</span>
-        <div class="progress-bg" id="progressTrack"><div class="progress-fg" id="progressBarFill" style="width: 0%;"></div></div>
-        <span id="durationLabel">0:00</span>
+      <div id="playbackLoading" class="hidden" style="padding: 20px;"><i class="fa-solid fa-circle-notch fa-spin fa-2xl" style="color: var(--text-main);"></i></div>
+      <div id="playbackControls" class="flex flex-col items-center w-full">
+        <div class="control-buttons">
+          <button class="ctrl-btn" id="shuffleButton" onclick="toggleShuffle()"><i class="fa-solid fa-shuffle"></i></button>
+          <button class="ctrl-btn" id="prevButton" onclick="playPrev()"><i class="fa-solid fa-backward-step"></i></button>
+          <button class="ctrl-play" id="playPauseButton" onclick="togglePlayPause()"><i class="fa-solid fa-play" style="margin-left:2px;"></i></button>
+          <button class="ctrl-btn" id="nextButton" onclick="playNext()"><i class="fa-solid fa-forward-step"></i></button>
+          <button class="ctrl-btn" id="repeatButton" onclick="cycleRepeat()"><i class="fa-solid fa-repeat"></i></button>
+        </div>
+        <div class="playback-bar">
+          <span id="currentTimeLabel">0:00</span>
+          <div class="progress-bg" id="progressTrack"><div class="progress-fg" id="progressBarFill" style="width: 0%;"></div></div>
+          <span id="durationLabel">0:00</span>
+        </div>
       </div>
     </div>
     <div class="extra-controls">

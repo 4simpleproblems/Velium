@@ -980,22 +980,33 @@ function renderFavorites() {
 }
 function createTrackRow(track, index, trackList, hideEllipsis = false, playlistId = null) {
     const div = document.createElement('div');
-    div.className = 'track-row';
     const trackUid = getTrackUid(track);
+    const isCurrentlyPlaying = currentTrack && getTrackUid(currentTrack) === trackUid;
+    
+    div.className = 'track-row' + (isCurrentlyPlaying ? ' is-playing' : '');
     div.dataset.trackUid = trackUid;
     let durationSec = 0;
     if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
     else if (track.duration_seconds) durationSec = track.duration_seconds;
     
     const isPlaylistView = playlistId !== null;
+    const isSearchView = document.getElementById('searchView')?.classList.contains('active');
 
     div.innerHTML = `
         <div class="track-num-col">
             <span class="row-num">${index + 1}</span>
             <i class="fa-solid fa-play row-play"></i>
+            <div class="playing-bars">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
         </div>
         <div class="track-info">
-            <img data-src="${track.local_artwork || getProxyUrl(track.artwork_url)}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="track-thumb">
+            <div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
+                <img data-src="${track.local_artwork || getProxyUrl(track.artwork_url)}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="track-thumb" style="width: 100%; height: 100%;">
+                <div class="playing-bars" style="z-index: 6;"><div></div><div></div><div></div></div>
+            </div>
             <div class="track-name-stack">
                 <span class="track-name">${escapeHtml(track.title)}</span>
                 <span class="np-artist" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</span>
@@ -1003,9 +1014,11 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
         <div class="track-plus-col">
+            ${(isSearchView && !isPlaylistView) ? '' : `
             <button class="row-action-btn" style="background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s;" title="${isPlaylistView ? 'Remove from Playlist' : 'Add to Playlist'}">
-                <i class="fa-solid ${isPlaylistView ? 'fa-trash' : 'fa-plus'}" style="${isPlaylistView ? 'color: #ef4444;' : ''}"></i>
+                <i class="fa-solid ${isPlaylistView && playlistId !== 'favorites' ? 'fa-trash' : 'fa-plus'}" style="${isPlaylistView && playlistId !== 'favorites' ? 'color: #ef4444;' : ''}"></i>
             </button>
+            `}
         </div>
         <div class="track-duration">${formatTime(durationSec)}</div>
     `;
@@ -1014,7 +1027,7 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
     if (actionBtn) {
         actionBtn.onclick = (e) => { 
             e.stopPropagation(); 
-            if (isPlaylistView) {
+            if (isPlaylistView && playlistId !== 'favorites') {
                 removeFromPlaylist(trackUid, playlistId);
             } else {
                 showAddToPlaylistModal(track); 
@@ -1027,7 +1040,6 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
         playlist = trackList;
         originalPlaylist = [...trackList];
         
-        // Find the fresh index in case the list has changed
         const freshIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
         playTrack(freshIndex > -1 ? freshIndex : index);
     });
@@ -1063,11 +1075,23 @@ async function playTrack(index) {
     if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
 
+    // Show loading state in bottom bar
+    const pbControls = document.getElementById('playbackControls');
+    const pbLoading = document.getElementById('playbackLoading');
+    if (pbControls) pbControls.classList.add('hidden');
+    if (pbLoading) pbLoading.classList.remove('hidden');
+
     if (isShuffle) {
         const sIndex = shuffledIndices.indexOf(index);
         if (sIndex > -1) shuffledCurrentIndex = sIndex;
         else generateShuffledSequence();
     }
+    
+    // Update active track styling in lists
+    document.querySelectorAll('.track-row').forEach(row => {
+        row.classList.toggle('is-playing', row.dataset.trackUid === getTrackUid(currentTrack));
+    });
+
     document.getElementById('currentTrackName').textContent = currentTrack.title;
     const artistNameEl = document.getElementById('currentArtistName');
     artistNameEl.textContent = currentTrack.artist_name;
@@ -1077,9 +1101,13 @@ async function playTrack(index) {
     artwork.src = currentTrack.local_artwork || getProxyUrl(currentTrack.artwork_url);
     artwork.classList.remove('hidden');
     document.getElementById('artworkPlaceholder').classList.add('hidden');
+    
     updateLikeButtonStatus();
     if (document.getElementById('fsPlayer').style.display === 'flex') updateFullscreenUI();
-    if (window.currentPanel === 'lyrics') fetchLyrics();
+    
+    // Background fetch lyrics
+    fetchLyrics();
+    
     if (window.currentPanel === 'queue') renderQueue();
     document.getElementById('progressBarFill').style.width = '0%';
     document.getElementById('currentTimeLabel').textContent = '0:00';
@@ -1125,7 +1153,15 @@ function loadAudioPlayer(url) {
     if (!audio) {
         audio = document.createElement('audio'); audio.id = 'nativeAudio';
         document.getElementById('audioElement').appendChild(audio);
-        audio.addEventListener('play', () => { isPlaying = true; updatePlayPauseUI(); startProgressUpdate(); });
+        audio.addEventListener('play', () => { 
+            isPlaying = true; 
+            updatePlayPauseUI(); 
+            startProgressUpdate(); 
+            const pbControls = document.getElementById('playbackControls');
+            const pbLoading = document.getElementById('playbackLoading');
+            if (pbControls) pbControls.classList.remove('hidden');
+            if (pbLoading) pbLoading.classList.add('hidden');
+        });
         audio.addEventListener('pause', () => { isPlaying = false; updatePlayPauseUI(); stopProgressUpdate(); });
         audio.addEventListener('ended', () => playNext());
         let errorCount = 0;
@@ -1192,7 +1228,17 @@ function loadYouTubePlayer(videoId) {
             player = new YT.Player('audioElement', {
                 height: '0', width: '0', videoId: videoId,
                 playerVars: { autoplay: 1, controls: 0, disablekb: 1, origin: window.location.origin },
-                events: { onReady: (e) => { e.target.setVolume(volume); e.target.playVideo(); }, onStateChange: onPlayerStateChange }
+                events: { 
+                    onReady: (e) => { 
+                        e.target.setVolume(volume); 
+                        e.target.playVideo(); 
+                        const pbControls = document.getElementById('playbackControls');
+                        const pbLoading = document.getElementById('playbackLoading');
+                        if (pbControls) pbControls.classList.remove('hidden');
+                        if (pbLoading) pbLoading.classList.add('hidden');
+                    }, 
+                    onStateChange: onPlayerStateChange 
+                }
             });
         }
     } else {
@@ -1300,28 +1346,24 @@ window.toggleLikeTrack = async function(track, btnEl) {
     const trackUid = getTrackUid(track);
     const index = favorites.findIndex(t => getTrackUid(t) === trackUid);
     const isLiking = index === -1;
+    
+    const originalFavorites = [...favorites];
+    
     if (isLiking) {
         favorites.push(track);
-        if (btnEl) {
-            btnEl.classList.add('active');
-            const icon = btnEl.querySelector('i');
-            if (icon) icon.className = 'fas text-red-500 fa-heart';
-        }
     } else {
         favorites.splice(index, 1);
-        if (btnEl) {
-            btnEl.classList.remove('active');
-            const icon = btnEl.querySelector('i');
-            if (icon) icon.className = 'far fa-heart';
-        }
     }
-    await saveLibraryData();
-    updateLikeButtonStatus();
-    renderSidebarPlaylists();
-    if (document.getElementById('favoritesView').classList.contains('active')) renderFavorites();
-    
-    if (isLiking && track.artwork_url && !track.local_artwork) {
-        try {
+
+    try {
+        await saveLibraryData();
+        
+        // UI Update after successful save
+        updateLikeButtonStatus();
+        renderSidebarPlaylists();
+        if (document.getElementById('favoritesView').classList.contains('active')) renderFavorites();
+        
+        if (isLiking && track.artwork_url && !track.local_artwork) {
             const b64 = await urlToBase64(track.artwork_url);
             if (b64) {
                 track.local_artwork = b64;
@@ -1329,7 +1371,11 @@ window.toggleLikeTrack = async function(track, btnEl) {
                 if (favIdx > -1) favorites[favIdx].local_artwork = b64;
                 await saveLibraryData();
             }
-        } catch (e) {}
+        }
+    } catch (e) {
+        console.error("Failed to save like state", e);
+        favorites = originalFavorites; // Revert
+        showToast('Failed to save like state', 'error');
     }
 };
 async function toggleLike() {
@@ -1908,14 +1954,16 @@ function updateLyricsSync(currentTime) {
     }
     if (activeIndex === -1) return;
 
-    const updateUI = (container) => {
+    const updateUI = (container, isVisible) => {
         if (!container) return;
         const lines = container.querySelectorAll('.lyric-line');
         lines.forEach((line, index) => {
             if (index === activeIndex) {
                 if (!line.classList.contains('active')) {
                     line.classList.add('active');
-                    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (isVisible) {
+                        line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
                 
                 // Handle dots animation
@@ -1943,9 +1991,13 @@ function updateLyricsSync(currentTime) {
     };
 
     const panelContent = document.getElementById('panelContent');
-    if (panelContent && currentPanel === 'lyrics') updateUI(panelContent);
+    const isLyricsPanel = currentPanel === 'lyrics';
+    updateUI(panelContent, isLyricsPanel);
+
+    const fsPlayer = document.getElementById('fsPlayer');
+    const isFsVisible = fsPlayer && fsPlayer.style.display === 'flex';
     const fsLyrics = document.querySelector('.fs-lyrics-container');
-    if (fsLyrics && document.getElementById('fsPlayer').style.display === 'flex') updateUI(fsLyrics);
+    updateUI(fsLyrics, isFsVisible);
 }
 function seekToLyrics(time) {
     if (time === null || time === undefined) return;
