@@ -1,5 +1,5 @@
 (() => {
-    const basePath = "/uv/";
+    const basePath = "/v-proxy/";
 
     self.__uv$config = {
         prefix: basePath + "service/",

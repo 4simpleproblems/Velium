@@ -1,11 +1,11 @@
-importScripts('uv/uv.bundle.js');
-importScripts('uv/uv.config.js');
+importScripts('v-proxy/uv.bundle.js');
+importScripts('v-proxy/uv.config.js');
 importScripts('baremux/index.js');
 const workerPath = location.origin + "/baremux/worker.js";
 const connection = new BareMux.WorkerConnection(workerPath);
 const bareClient = new BareMux.BareClient(connection);
 const ultraviolet = new self.Ultraviolet(__uv$config);
-importScripts(__uv$config.sw || 'uv/uv.sw.js');
+importScripts(__uv$config.sw || 'v-proxy/uv.sw.js');
 const uv = new UVServiceWorker();
 uv.bareClient = bareClient;
 self.addEventListener('message', (event) => {
@@ -25,7 +25,7 @@ self.addEventListener('activate', (event) => {
 });
 self.addEventListener('fetch', event => {
     const url = event.request.url;
-    const prefix = "/uv/service/";
+    const prefix = "/v-proxy/service/";
     event.respondWith(
         (async () => {
             const isEncoded = url.includes('hvtrs8');

@@ -8,13 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="preload" href="/uv/uv.bundle.js" as="script">
+  <link rel="preload" href="/v-proxy/uv.bundle.js" as="script">
   <link rel="preload" href="/baremux/index.js" as="script">
   <link rel="preload" href="/baremux/worker.js" as="worker">
-  <link rel="preload" href="/uv/sw.js" as="worker">
-  <script src="/uv/uv.bundle.js"></script>
+  <link rel="preload" href="/v-proxy/sw.js" as="worker">
+  <script src="/v-proxy/uv.bundle.js"></script>
   <script>
-    const basePath = "/uv/";
+    const basePath = "/v-proxy/";
     self.__uv$config = {
         prefix: basePath + "service/",
         encodeUrl: Ultraviolet.codec.xor.encode,

@@ -41,7 +41,7 @@ function getProxyUrl(url, size = null) {
         }
     }
     if (url.startsWith('//')) url = 'https:' + url;
-    const prefix = (window.__uv$config && window.__uv$config.prefix) || "/uv/service/";
+    const prefix = (window.__uv$config && window.__uv$config.prefix) || "/v-proxy/service/";
     const encode = (window.__uv$config && window.__uv$config.encodeUrl) || (window.Ultraviolet && window.Ultraviolet.codec && window.Ultraviolet.codec.xor && window.Ultraviolet.codec.xor.encode);
     if (encode) {
         const encoded = encode(url);
