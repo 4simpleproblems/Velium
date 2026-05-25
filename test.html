@@ -505,8 +505,8 @@
       <div style="display: flex; align-items: center; gap: 10px;">
         <i class="fa-solid fa-record-vinyl"></i> VELIUM
       </div>
-      <button id="infoModalBtn" style="background: #000; border: none; border-radius: 50% !important; width: 24px; height: 24px; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.2s; padding: 0; flex-shrink: 0; box-shadow: 0 0 0 1px var(--divider);" title="Info & Disclaimer" onclick="showInfoModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-        <i class="fa-solid fa-question" style="font-size: 12px; color: #fff;"></i>
+      <button id="infoModalBtn" style="background: #000; border: none; border-radius: 50% !important; width: 32px; height: 32px; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.2s; padding: 0; flex-shrink: 0; box-shadow: 0 0 0 1px var(--divider);" title="Info & Disclaimer" onclick="showInfoModal()" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+        <i class="fa-solid fa-question" style="font-size: 16px; color: #fff;"></i>
       </button>
     </div>
     <a href="#" class="nav-item active" data-view="home" onclick="event.preventDefault(); switchView('home')">
@@ -526,7 +526,7 @@
       <div id="sidebar-playlists"></div>
     </div>
     <div style="padding: 16px 24px; font-size: 11px; color: var(--text-subdued); border-top: 1px solid var(--divider); background: var(--bg-base); z-index: 10;">
-      <a href="#" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='inherit'" onclick="event.preventDefault(); showTOSModal(false)">Terms of Service</a>
+      <a href="terms.html" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='inherit'">Terms of Service</a>
     </div>
   </aside>
   <main class="main-view">
@@ -661,30 +661,16 @@
   <div id="toastContainer" style="position: fixed; bottom: 110px; right: 24px; z-index: 100000; display: flex; flex-direction: column; gap: 8px; pointer-events: none;"></div>
   <div id="audioElement"></div>
   <div id="infoModal" class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content" style="background-color: #000000; border-radius: 20px; max-width: 550px; border: 1px solid var(--divider);">
       <h2 class="modal-title">Velium Info & Disclaimer</h2>
-      <div style="font-size: 14px; color: var(--text-subdued); line-height: 1.6; margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px;">
-        <p>⚠️ <strong>Important Playback Info:</strong> Not all songs will play with a 100% guarantee. Due to third-party source fluctuations, some tracks might fail to resolve or buffer.</p>
-        <p>🎵 <strong>Lyrics Syncing:</strong> Some lyrics may not be properly synced or might be unavailable for certain tracks.</p>
-        <p>⚙️ <strong>Manual Calibration:</strong> For manual lyric calibration, you can <strong>right-click</strong> a lyric line in the player to immediately sync the song's playback to that line.</p>
-        <p>⚖️ <strong>Terms of Service:</strong> Read our <a href="#" onclick="event.preventDefault(); showTOSModal(true);" style="color: var(--text-main); font-weight: bold; text-decoration: underline;">Terms of Service</a> for licensing and usage details.</p>
-      </div>
+      <ul style="font-size: 14px; color: var(--text-subdued); line-height: 1.8; margin-bottom: 24px; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; font-family: 'Manrope', sans-serif;">
+        <li><strong>Important Playback Info:</strong> Not all songs will play with a 100% guarantee. Due to third-party source fluctuations, some tracks might fail to resolve or buffer.</li>
+        <li><strong>Lyrics Syncing:</strong> Some lyrics may not be properly synced or might be unavailable for certain tracks.</li>
+        <li><strong>Manual Calibration:</strong> For manual lyric calibration, you can right-click a lyric line in the player to immediately sync the song's playback to that line.</li>
+        <li><strong>Terms of Service:</strong> Read our <a href="terms.html" style="color: var(--text-main); font-weight: bold; text-decoration: underline;">Terms of Service</a> for licensing and usage details.</li>
+      </ul>
       <div class="modal-buttons">
         <button class="btn-flat primary" onclick="hideInfoModal()">Dismiss</button>
-      </div>
-    </div>
-  </div>
-  <div id="tosModal" class="modal-overlay">
-    <div class="modal-content">
-      <h2 class="modal-title">Terms of Service</h2>
-      <div style="font-size: 14px; color: var(--text-subdued); line-height: 1.6; margin-bottom: 24px; display: flex; flex-direction: column; gap: 16px;">
-        <p>This software is provided for personal, educational, and non-commercial usage only.</p>
-        <p><strong>Third-Party APIs:</strong> Velium utilizes third-party APIs (such as YouTube, YouTube Music, and public proxies) to search, fetch metadata, and play tracks. We do not host any music files on our servers.</p>
-        <p><strong>Anti-Piracy Commitment:</strong> We are not pirating any music for personal gain. No commercial features, ads, or monetization exist on Velium.</p>
-        <p>By using this service, you acknowledge and agree to these terms.</p>
-      </div>
-      <div class="modal-buttons">
-        <button class="btn-flat" onclick="hideTOSModal()">Back</button>
       </div>
     </div>
   </div>

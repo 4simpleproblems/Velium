@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service | Velium</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Outfit:wght@400;600;800&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-base: #000000;
+      --bg-elevated: #121212;
+      --bg-hover: #1a1a1a;
+      --text-main: #ffffff;
+      --text-subdued: #b3b3b3;
+      --divider: #282828;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Manrope', sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-subdued);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .container {
+      width: 90%;
+      max-width: 650px;
+      background-color: var(--bg-elevated);
+      border: 1px solid var(--divider);
+      border-radius: 20px;
+      padding: 40px;
+      box-sizing: border-box;
+      margin: 40px 0;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-top: 0;
+      margin-bottom: 24px;
+      letter-spacing: -1px;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .highlight-box {
+      background-color: var(--bg-hover);
+      border-left: 4px solid var(--text-main);
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    .highlight-box p {
+      margin: 0;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+    .btn-back {
+      background-color: var(--text-main);
+      color: #000;
+      border: none;
+      border-radius: 24px;
+      padding: 12px 32px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn-back:hover {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Terms of Service</h1>
+    <div class="highlight-box">
+      <p>This software is provided for personal, educational, and non-commercial usage only.</p>
+    </div>
+    <p><strong>Third-Party APIs:</strong> Velium utilizes third-party APIs (such as YouTube, YouTube Music, and public proxies) to search, fetch metadata, and play tracks. We do not host any music files on our servers.</p>
+    <p><strong>Anti-Piracy Commitment:</strong> We are not pirating any music for personal gain. No commercial features, ads, or monetization exist on Velium.</p>
+    <p>By using this service, you acknowledge and agree to these terms.</p>
+    <div style="margin-top: 32px;">
+      <a href="/" class="btn-back" onclick="if (document.referrer) { event.preventDefault(); window.history.back(); }">
+        <i class="fa-solid fa-arrow-left"></i> Back to Player
+      </a>
+    </div>
+  </div>
+</body>
+</html>
+<!-- Made with ❤️ from 4SP -->
