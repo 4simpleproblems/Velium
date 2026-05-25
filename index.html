@@ -150,7 +150,6 @@
     .artist-img { width: 232px; height: 232px; background-color: #1a1a1a; box-shadow: 0 4px 60px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 64px; color: #333; overflow: hidden; }
     .artist-img img { width: 100%; height: 100%; object-fit: cover; }
     .hero-meta { display: flex; flex-direction: column; gap: 8px; }
-    .verified-badge { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--text-main); }
     .artist-header { font-family: 'Manrope', sans-serif; font-size: 80px; font-weight: 900; margin: 0; color: var(--text-main); letter-spacing: -4px; }
     .monthly-listeners { font-size: 16px; font-weight: 500; color: var(--text-main); }
     .action-bar { padding: 24px 32px; display: flex; align-items: center; gap: 32px; }
@@ -359,51 +358,57 @@
     .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; }
     .btn-flat { background: none; border: none; color: var(--text-main); font-weight: 700; cursor: pointer; padding: 8px 16px; }
     .btn-flat.primary { background-color: var(--text-main); color: #000; border-radius: 24px; padding: 12px 32px; }
-    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; transition: opacity 0.5s; padding: 60px; font-family: 'Manrope', sans-serif; overflow: visible; }
+    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; transition: opacity 0.5s; padding: 5vh 5vw; font-family: 'Manrope', sans-serif; overflow: hidden; box-sizing: border-box; }
     .fs-background { 
       position: absolute; 
-      inset: -20% !important; 
+      inset: -10% !important; 
       opacity: 0.7; 
-      filter: blur(100px) saturate(1.8); 
+      filter: blur(80px) saturate(1.8); 
       z-index: -2; 
       transition: background-image 1.5s ease-in-out;
       background-size: cover;
       background-position: center;
-      width: 140% !important;
-      height: 140% !important;
+      width: 120% !important;
+      height: 120% !important;
     }
-    .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; position: relative; z-index: 10; overflow: visible; }
-    .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 120px; transition: all 0.5s ease; overflow: visible; }
+    .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2vh; position: relative; z-index: 10; flex-shrink: 0; }
+    .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8vw; transition: all 0.5s ease; overflow: visible; min-height: 0; padding: 40px; }
     .fs-main.no-lyrics { flex-direction: column; gap: 40px; }
     .fs-main.no-lyrics .fs-lyrics-container { display: none; }
-    .fs-main.no-lyrics .fs-art-container { width: 500px; height: 500px; }
+    .fs-main.no-lyrics .fs-art-container { width: 60vh; height: 60vh; max-width: 80vw; max-height: 80vw; }
     
-    .fs-art-container { width: 450px; height: 450px; flex-shrink: 0; box-shadow: 0 20px 80px rgba(0,0,0,0.8); background: #222; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+    .fs-art-container { width: 40vh; height: 40vh; max-width: 45vw; max-height: 45vw; flex-shrink: 0; box-shadow: 0 20px 80px rgba(0,0,0,0.8); background: #222; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 5; margin: 40px; }
     .fs-art-container img { width: 100%; height: 100%; object-fit: cover; }
     .fs-lyrics-container { 
       flex: 1; 
       display: flex; 
       flex-direction: column; 
-      gap: 32px; 
-      max-height: 60vh; 
+      gap: 40px; 
+      height: 100%;
       overflow-y: auto; 
       text-align: left;
       font-family: 'Manrope', sans-serif;
+      mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+      padding: 15vh 0;
+      scrollbar-width: none;
+      overflow-x: visible;
     }
-    .fs-lyrics-container .lyric-line { font-size: 32px; line-height: 1.2; opacity: 0.2; transition: all 0.2s ease; }
+    .fs-lyrics-container::-webkit-scrollbar { display: none; }
+    .fs-lyrics-container .lyric-line { font-size: 32px; line-height: 1.2; opacity: 0.2; transition: all 0.2s ease; cursor: pointer; overflow: visible; }
     .fs-lyrics-container .active { font-size: 48px; color: #fff; opacity: 1; }
     .fs-lyrics-container.hidden { display: none !important; }
     .fs-main.lyrics-hidden .fs-lyrics-container { display: none !important; }
-    .fs-main.lyrics-hidden .fs-art-container { width: 600px; height: 600px; }
+    .fs-main.lyrics-hidden .fs-art-container { width: 70vh; height: 70vh; max-width: 80vw; max-height: 80vw; }
     
     .track-heart-btn { background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s, color 0.2s; font-size: 14px; }
     .track-row:hover .track-heart-btn { opacity: 1; }
     .track-heart-btn.active { color: #ef4444; }
 
-    .fs-controls-container { width: 100%; max-width: 800px; margin: 20px auto 40px auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 10; overflow: visible; }
-    .fs-meta { text-align: left; margin-bottom: 10px; padding: 20px; margin: -20px; margin-bottom: -10px; overflow: visible; }
-    .fs-meta .np-title { font-size: 32px; font-weight: 800; line-height: 1.4; }
-    .fs-meta .np-artist { font-size: 18px; color: rgba(255,255,255,0.6); line-height: 1.4; }
+    .fs-controls-container { width: 100%; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 2vh; position: relative; z-index: 10; flex-shrink: 0; padding: 2vh; margin-top: -2vh; overflow: visible; }
+    .fs-meta { text-align: left; overflow: visible; }
+    .fs-meta .np-title { font-size: 4vh; font-weight: 800; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-meta .np-artist { font-size: 2.2vh; color: rgba(255,255,255,0.6); line-height: 1.2; margin-top: 0.5vh; }
     
     /* Bright Background Adaptivity */
     #fsPlayer.bright-bg .np-title, 
@@ -462,7 +467,11 @@
       pointer-events: auto !important;
     }
     .flex { display: flex; }
+    .flex-col { flex-direction: column; }
     .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .w-full { width: 100%; }
+    .h-full { height: 100%; }
     .gap-3 { gap: 12px; }
     .px-5 { padding-left: 20px; padding-right: 20px; }
     .py-3 { padding-top: 12px; padding-bottom: 12px; }
@@ -550,7 +559,6 @@
       <header class="hero-header" style="background: linear-gradient(to bottom, #4f46e5 0%, var(--bg-elevated) 100%);">
         <div class="artist-img" style="border-radius: 0% !important; background: linear-gradient(135deg, #4f46e5, #8b5cf6);"><i class="fa-solid fa-heart" style="color: #fff;"></i></div>
         <div class="hero-meta">
-          <div class="verified-badge">Playlist</div>
           <h1 class="artist-header">Liked Songs</h1>
           <div class="monthly-listeners" id="likedSongsCount">0 songs</div>
         </div>

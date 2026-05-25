@@ -659,9 +659,6 @@ async function loadArtistView(artistName, append = false) {
                     <i class="fa-solid fa-user"></i>
                 </div>
                 <div class="hero-meta">
-                    <div class="verified-badge">
-                        <i class="fa-solid fa-circle-check"></i> Verified Artist
-                    </div>
                     <h1 class="artist-header">${escapeHtml(artistName)}</h1>
                     <div class="monthly-listeners" id="artistTrackCount">Loading tracks...</div>
                 </div>
@@ -970,7 +967,6 @@ async function loadOfficialPlaylistDetails(playlistId) {
                     <img src="${getProxyUrl(data.artwork_url)}">
                 </div>
                 <div class="hero-meta">
-                    <div class="verified-badge">Playlist</div>
                     <h1 class="artist-header">${escapeHtml(data.name)}</h1>
                     <div class="monthly-listeners">${escapeHtml(data.description || 'Official Playlist')}</div>
                     <div class="monthly-listeners" style="margin-top: 4px; font-weight: bold;">${data.song_count} songs</div>
@@ -1283,7 +1279,7 @@ function loadAudioPlayer(url) {
             console.warn("Audio loading timed out, triggering fallback...");
             audio.dispatchEvent(new Event('error'));
         }
-    }, 8000);
+    }, 15000);
     audio.oncanplay = () => { clearTimeout(loadTimeout); setPlaybackLoading(false); };
     
     const playPromise = audio.play();
@@ -1592,7 +1588,6 @@ async function loadPlaylistView(playlistId) {
                 .playlist-art-container:hover .art-overlay { opacity: 1 !important; }
             </style>
             <div class="hero-meta">
-                <div class="verified-badge">Playlist</div>
                 <h1 class="artist-header">${escapeHtml(pl.name)}</h1>
                 <div class="monthly-listeners">${escapeHtml(pl.description || 'No description')}</div>
                 <div class="monthly-listeners" style="margin-top: 4px; font-weight: bold;">${pl.tracks.length} songs</div>
@@ -2156,14 +2151,14 @@ async function fetchLyrics() {
             if (durationSec > 0) {
                 lrclibUrl += `&duration=${Math.round(durationSec)}`;
             }
-            const lrclibRes = await fetch(lrclibUrl);
+            const lrclibRes = await fetch(getProxyUrl(lrclibUrl));
             if (getTrackUid(currentTrack) !== playingWhenStarted) return;
 
             if (lrclibRes.ok) {
                 const lrclibData = await lrclibRes.json();
                 lyricsText = lrclibData.syncedLyrics || lrclibData.plainLyrics;
             } else {
-                const lrclibSearchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(trackName + ' ' + artistName)}`);
+                const lrclibSearchRes = await fetch(getProxyUrl(`https://lrclib.net/api/search?q=${encodeURIComponent(trackName + ' ' + artistName)}`));
                 if (lrclibSearchRes.ok) {
                     const searchResults = await lrclibSearchRes.json();
                     if (searchResults && searchResults.length > 0) {
