@@ -40,6 +40,42 @@ function optimizeThumbnailUrl(url) {
   return url;
 }
 
+async function fetchJioSaavn(searchQuery) {
+  const bases = [
+    'https://saavn.me',
+    'https://jiosaavn-api-liart.vercel.app',
+    'https://jiosaavn-api-2-0.vercel.app',
+    'https://nepotuneapi.vercel.app'
+  ];
+  const urls = [];
+  bases.forEach(base => {
+    urls.push(`${base}/api/search/songs?query=${encodeURIComponent(searchQuery)}`);
+    urls.push(`${base}/search/songs?query=${encodeURIComponent(searchQuery)}`);
+  });
+  const fetchWithTimeout = async (url) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 2500);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(id);
+      if (!response.ok) throw new Error('Failed');
+      const data = await response.json();
+      if (data && (data.data || Array.isArray(data))) {
+        return data;
+      }
+      throw new Error('Invalid');
+    } catch (e) {
+      clearTimeout(id);
+      throw e;
+    }
+  };
+  try {
+    return await Promise.any(urls.map(url => fetchWithTimeout(url)));
+  } catch (e) {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -100,7 +136,7 @@ export default async function handler(req, res) {
       const searchQuery = q || query;
       if (!searchQuery) return res.status(400).json({ error: 'Missing query' });
       
-      const [musicApiRes, ytMusicRes, argonRes] = await Promise.all([
+      const [musicApiRes, ytMusicRes, argonRes, saavnRes] = await Promise.all([
         fetch(`${MUSIC_API_BASE}/prepare/${encodeURIComponent(searchQuery)}`)
             .then(r => r.ok ? r.json() : null)
             .then(async data => {
@@ -121,7 +157,8 @@ export default async function handler(req, res) {
         }).catch(() => null),
         fetch(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(searchQuery)}&offset=${offset || 0}&limit=${limit || 25}`)
             .then(r => r.ok ? r.json() : { collection: [] })
-            .catch(() => ({ collection: [] }))
+            .catch(() => ({ collection: [] })),
+        fetchJioSaavn(searchQuery).catch(() => null)
       ]);
 
       let tracks = [];
@@ -185,6 +222,52 @@ export default async function handler(req, res) {
               downloadUrl: [{ quality: '320kbps', link: musicApiRes.AUDIO_URL }],
               source: 'MusicAPI'
           });
+      }
+
+      if (saavnRes) {
+          let songs = [];
+          if (saavnRes.data) {
+              songs = saavnRes.data.results || saavnRes.data || [];
+          } else if (Array.isArray(saavnRes)) {
+              songs = saavnRes;
+          } else if (saavnRes.results) {
+              songs = saavnRes.results;
+          }
+          if (Array.isArray(songs)) {
+              const saavnTracks = songs.map(song => {
+                  if (!song) return null;
+                  const title = song.name || song.title || 'Unknown Title';
+                  const artist = song.primaryArtists || song.artists?.[0]?.name || song.artist || 'Unknown Artist';
+                  const artistId = song.primaryArtistsId || song.artists?.[0]?.id;
+                  let artwork = '';
+                  if (Array.isArray(song.image)) {
+                      artwork = song.image[song.image.length - 1]?.link || song.image[song.image.length - 1]?.url || song.image[0]?.link || '';
+                  } else if (typeof song.image === 'string') {
+                      artwork = song.image;
+                  }
+                  const duration = parseInt(song.duration || 0) * 1000;
+                  let downloadUrl = song.downloadUrl;
+                  if (typeof downloadUrl === 'string') {
+                      downloadUrl = [{ quality: '320kbps', link: downloadUrl }];
+                  } else if (Array.isArray(downloadUrl)) {
+                      downloadUrl = downloadUrl.map(d => ({
+                          quality: d.quality || '320kbps',
+                          link: d.link || d.url || ''
+                      }));
+                  }
+                  return {
+                      id: `saavn-${song.id}`,
+                      title: title,
+                      artist_name: artist,
+                      artist_id: artistId ? `saavn-${artistId}` : null,
+                      artwork_url: optimizeThumbnailUrl(artwork),
+                      duration: duration,
+                      downloadUrl: downloadUrl,
+                      source: 'Saavn'
+                  };
+              }).filter(Boolean);
+              tracks.push(...saavnTracks);
+          }
       }
 
       if (ytSongs.length > 0) {
@@ -433,35 +516,23 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Lyrics not found' });
     }
 
-    if (endpoint === 'stream') {
-      const videoId = id || req.query.id;
-      if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
-      try {
-        const yt = await getYoutube();
-        const info = await yt.getBasicInfo(videoId);
-        const format = info.chooseFormat({ type: 'audio', quality: 'best' });
-        const streamUrl = format.decipher(yt.session.player);
-        return res.status(200).json({ url: streamUrl });
-      } catch (e) {
-        return res.status(500).json({ error: 'Failed to get stream URL', message: e.message });
-      }
-    }
-
     if (endpoint === 'youtube-search') {
         const searchQuery = q || query;
         if (!searchQuery) return res.status(400).json({ error: 'Missing query' });
         
         try {
             const yt = await getYoutube();
-            const searchResults = await yt.search(searchQuery, { type: 'video' });
+            const search = await yt.music.search(searchQuery);
             
-            const results = (searchResults.results || searchResults.videos || []).map(item => ({
-                videoId: item.id,
-                id: item.id,
+            const songs = search.songs?.contents || [];
+            const videos = search.videos?.contents || [];
+            
+            const results = [...songs, ...videos].map(item => ({
+                videoId: item.id || item.videoId || item.video_id,
+                id: item.id || item.videoId || item.video_id,
                 title: item.title?.toString(),
-                author: item.author?.name,
-                thumbnails: item.thumbnails
-            }));
+                author: item.artists?.[0]?.name?.toString() || item.author?.name?.toString()
+            })).filter(r => r.videoId);
 
             const firstVideoId = results.length > 0 ? results[0].videoId : null;
 

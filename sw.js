@@ -54,7 +54,7 @@ self.addEventListener('fetch', event => {
         (async () => {
             // Auto-proxy certain domains or encoded URLs even if prefix is missing
             const isEncoded = url.includes('/hvtrs8');
-            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com') || url.includes('scdn.co') || url.includes('mzstatic.com') || url.includes('googlevideo.com');
+            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com') || url.includes('scdn.co') || url.includes('mzstatic.com');
             
             let targetEvent = event;
             let shouldRoute = uv.route(event);
@@ -99,7 +99,7 @@ self.addEventListener('fetch', event => {
 
                 const isMedia = targetEvent.request.destination === 'image' || 
                                 targetEvent.request.destination === 'audio' ||
-                                (unroutedUrl && (unroutedUrl.includes('googleusercontent.com') || unroutedUrl.includes('ggpht.com') || unroutedUrl.includes('saavncdn.com') || unroutedUrl.includes('googlevideo.com') || unroutedUrl.includes('googlevideo') || unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)(\?|$)/i)));
+                                (unroutedUrl && (unroutedUrl.includes('googleusercontent.com') || unroutedUrl.includes('ggpht.com') || unroutedUrl.includes('saavncdn.com') || unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)(\?|$)/i)));
 
                 if (isMedia && unroutedUrl) {
                     try {

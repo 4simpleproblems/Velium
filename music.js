@@ -203,20 +203,12 @@ async function preloadSingleTrack(index, type) {
     const cache = type === 'next' ? preloadedNextTrack : preloadedPrevTrack;
     if (cache && cache.uid === trackUid) return;
     try {
-        let directUrl = getDownloadUrl(track);
-        if (!directUrl && (track.youtube_id || track.videoId)) {
-            const videoId = track.youtube_id || track.videoId;
-            try {
-                const streamResponse = await fetch(`${API_BASE_URL}/stream?id=${videoId}`);
-                const streamData = await streamResponse.json();
-                if (streamData.url) {
-                    directUrl = getProxyUrl(streamData.url);
-                }
-            } catch (err) {
-                console.warn("Failed to get preloaded stream URL for YouTube video", err);
-            }
+        if (track.youtube_id || track.videoId) {
+            const data = { index, uid: trackUid, source: 'youtube', videoId: track.youtube_id || track.videoId };
+            if (type === 'next') preloadedNextTrack = data; else preloadedPrevTrack = data;
+            return;
         }
-        
+        const directUrl = getDownloadUrl(track);
         if (directUrl) {
             const data = { index, uid: trackUid, source: 'audio', url: directUrl };
             if (type === 'next') preloadedNextTrack = data; else preloadedPrevTrack = data;
@@ -232,34 +224,12 @@ async function preloadSingleTrack(index, type) {
             preloadAudio.src = directUrl;
             preloadAudio.load();
         } else {
-            const query = `${track.title} ${track.artist_name} official audio`;
+            const query = `${track.title} ${track.artist_name}`;
             const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
             const data = await response.json();
             if (data.videoId) {
                 track.youtube_id = data.videoId;
                 saveLibraryData();
-                try {
-                    const streamResponse = await fetch(`${API_BASE_URL}/stream?id=${data.videoId}`);
-                    const streamData = await streamResponse.json();
-                    if (streamData.url) {
-                        const streamUrl = getProxyUrl(streamData.url);
-                        const cacheData = { index, uid: trackUid, source: 'audio', url: streamUrl };
-                        if (type === 'next') preloadedNextTrack = cacheData; else preloadedPrevTrack = cacheData;
-                        
-                        let preloadElId = type === 'next' ? 'preloadAudioNext' : 'preloadAudioPrev';
-                        let preloadAudio = document.getElementById(preloadElId);
-                        if (!preloadAudio) {
-                            preloadAudio = document.createElement('audio');
-                            preloadAudio.id = preloadElId;
-                            preloadAudio.preload = 'auto';
-                            preloadAudio.style.display = 'none';
-                            document.body.appendChild(preloadAudio);
-                        }
-                        preloadAudio.src = streamUrl;
-                        preloadAudio.load();
-                        return;
-                    }
-                } catch (err) {}
                 const cacheData = { index, uid: trackUid, source: 'youtube', videoId: data.videoId };
                 if (type === 'next') preloadedNextTrack = cacheData; else preloadedPrevTrack = cacheData;
             }
@@ -1201,22 +1171,8 @@ async function playTrack(index) {
     else if (preloadedPrevTrack && preloadedPrevTrack.uid === currentUid) preloaded = preloadedPrevTrack;
     
     if (preloaded) {
-        if (preloaded.source === 'audio') {
-            loadAudioPlayer(preloaded.url);
-        } else {
-            const videoId = preloaded.videoId;
-            try {
-                const streamResponse = await fetch(`${API_BASE_URL}/stream?id=${videoId}`);
-                const streamData = await streamResponse.json();
-                if (streamData.url) {
-                    loadAudioPlayer(getProxyUrl(streamData.url));
-                } else {
-                    loadYouTubePlayer(videoId);
-                }
-            } catch (err) {
-                loadYouTubePlayer(videoId);
-            }
-        }
+        if (preloaded.source === 'audio') loadAudioPlayer(preloaded.url);
+        else loadYouTubePlayer(preloaded.videoId);
         preloadedNextTrack = null;
         preloadedPrevTrack = null;
         preloadTracks();
@@ -1229,40 +1185,17 @@ async function playTrack(index) {
         return;
     }
     if (currentTrack.youtube_id || currentTrack.videoId) {
-        const videoId = currentTrack.youtube_id || currentTrack.videoId;
-        try {
-            const streamResponse = await fetch(`${API_BASE_URL}/stream?id=${videoId}`);
-            const streamData = await streamResponse.json();
-            if (streamData.url) {
-                loadAudioPlayer(getProxyUrl(streamData.url));
-                preloadTracks();
-                return;
-            }
-        } catch (streamErr) {
-            console.warn("Direct stream fetch failed, falling back to YouTube Player:", streamErr);
-        }
-        loadYouTubePlayer(videoId);
+        loadYouTubePlayer(currentTrack.youtube_id || currentTrack.videoId);
         preloadTracks();
         return;
     }
     try {
-        const query = `${currentTrack.title} ${currentTrack.artist_name} official audio`;
+        const query = `${currentTrack.title} ${currentTrack.artist_name}`;
         const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
         const data = await response.json();
         if (data.videoId) {
             currentTrack.youtube_id = data.videoId;
             saveLibraryData();
-            try {
-                const streamResponse = await fetch(`${API_BASE_URL}/stream?id=${data.videoId}`);
-                const streamData = await streamResponse.json();
-                if (streamData.url) {
-                    loadAudioPlayer(getProxyUrl(streamData.url));
-                    preloadTracks();
-                    return;
-                }
-            } catch (streamErr) {
-                console.warn("Direct stream fetch failed, falling back to YouTube Player:", streamErr);
-            }
             loadYouTubePlayer(data.videoId);
             preloadTracks();
         }
@@ -1410,19 +1343,11 @@ function loadAudioPlayer(url) {
             
             if (currentTrack) {
                 showToast("Direct audio failed, falling back to YouTube...", "info");
-                const query = `${currentTrack.title} ${currentTrack.artist_name} official audio`;
+                const query = `${currentTrack.title} ${currentTrack.artist_name}`;
                 try {
                     const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
                     const data = await response.json();
                     if (data.videoId) {
-                        try {
-                            const streamResponse = await fetch(`${API_BASE_URL}/stream?id=${data.videoId}`);
-                            const streamData = await streamResponse.json();
-                            if (streamData.url) {
-                                loadAudioPlayer(getProxyUrl(streamData.url));
-                                return;
-                            }
-                        } catch (streamErr) {}
                         loadYouTubePlayer(data.videoId);
                     } else {
                         showToast("Playback failed: No YouTube alternative found.", "error");
