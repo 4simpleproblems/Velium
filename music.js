@@ -1752,7 +1752,7 @@ function showCreatePlaylistModal() {
     document.getElementById('playlistNameInput').value = ''; 
     document.getElementById('playlistDescInput').value = ''; 
     document.getElementById('createPlaylistColor').value = '#4f46e5';
-    renderColorPicker('createPlaylistColorPicker', 'createPlaylistColor', '#4f46e5', null);
+    renderColorPicker('createPlaylistColorPicker', 'createPlaylistColor', 'createPlaylistColorHex', '#4f46e5', null);
 }
 function hideCreatePlaylistModal() { document.getElementById('createPlaylistModal').style.display = 'none'; }
 function showEditPlaylistModal(playlistId) {
@@ -1781,7 +1781,7 @@ function showEditPlaylistModal(playlistId) {
         removeBtn.classList.remove('show');
     }
     
-    renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', pl.color || '#4f46e5', pl.cover_url);
+    renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', 'editPlaylistColorHex', pl.color || '#4f46e5', pl.cover_url);
 }
 function hideEditPlaylistModal() { document.getElementById('editPlaylistModal').style.display = 'none'; }
 async function confirmEditPlaylist() {
@@ -1798,7 +1798,7 @@ async function confirmEditPlaylist() {
     }
 }
 
-function renderColorPicker(containerId, hiddenInputId, activeColor, imageUrl, customColor = null) {
+function renderColorPicker(containerId, hiddenInputId, hexInputId, activeColor, imageUrl, customColor = null) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
@@ -1808,6 +1808,30 @@ function renderColorPicker(containerId, hiddenInputId, activeColor, imageUrl, cu
         defaultColors.unshift(customColor);
     }
     
+    const hexInput = document.getElementById(hexInputId);
+    if (hexInput) {
+        hexInput.value = activeColor.toUpperCase();
+        hexInput.oninput = (e) => {
+            let val = e.target.value.trim();
+            if (val && !val.startsWith('#')) val = '#' + val;
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                document.getElementById(hiddenInputId).value = val;
+                container.querySelectorAll('.color-option').forEach(el => {
+                    const bg = el.style.backgroundColor;
+                    if (bg) {
+                        const rgbMatch = bg.match(/\d+/g);
+                        if (rgbMatch) {
+                            const r = parseInt(rgbMatch[0]), g = parseInt(rgbMatch[1]), b = parseInt(rgbMatch[2]);
+                            const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+                            if (hex.toLowerCase() === val.toLowerCase()) el.classList.add('active');
+                            else el.classList.remove('active');
+                        }
+                    }
+                });
+            }
+        };
+    }
+
     const render = (allColors) => {
         container.innerHTML = '';
         const uniqueColors = [...new Set(allColors)];
@@ -1819,15 +1843,20 @@ function renderColorPicker(containerId, hiddenInputId, activeColor, imageUrl, cu
                 container.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
                 opt.classList.add('active');
                 document.getElementById(hiddenInputId).value = color;
+                if (hexInput) hexInput.value = color.toUpperCase();
             };
             container.appendChild(opt);
         });
 
         // Add custom color option element
         const customOpt = document.createElement('div');
-        customOpt.className = 'color-option custom-picker-btn';
+        customOpt.className = 'color-option custom-picker-btn' + (customColor && activeColor.toLowerCase() === customColor.toLowerCase() ? ' active' : '');
         customOpt.style.position = 'relative';
-        customOpt.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)';
+        if (customColor) {
+            customOpt.style.background = customColor;
+        } else {
+            customOpt.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)';
+        }
         customOpt.style.display = 'flex';
         customOpt.style.alignItems = 'center';
         customOpt.style.justifyContent = 'center';
@@ -1845,8 +1874,19 @@ function renderColorPicker(containerId, hiddenInputId, activeColor, imageUrl, cu
         colorInput.oninput = (e) => {
             const customVal = e.target.value;
             document.getElementById(hiddenInputId).value = customVal;
-            renderColorPicker(containerId, hiddenInputId, customVal, imageUrl, customVal);
+            if (hexInput) hexInput.value = customVal.toUpperCase();
+            customOpt.style.background = customVal;
+            container.querySelectorAll('.color-option').forEach(el => {
+                if (el !== customOpt) el.classList.remove('active');
+            });
+            customOpt.classList.add('active');
         };
+
+        colorInput.onchange = (e) => {
+            const customVal = e.target.value;
+            renderColorPicker(containerId, hiddenInputId, hexInputId, customVal, imageUrl, customVal);
+        };
+
         customOpt.appendChild(colorInput);
         container.appendChild(customOpt);
     };
@@ -1892,7 +1932,7 @@ window.removePlaylistArt = function() {
     artPreview.style.display = 'none';
     artPlaceholder.style.display = 'flex';
     removeBtn.classList.remove('show');
-    renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', document.getElementById('editPlaylistColor').value, null);
+    renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', 'editPlaylistColorHex', document.getElementById('editPlaylistColor').value, null);
 };
 function showAddToPlaylistModal(track) {
     if (!track) track = currentTrack;
@@ -2105,7 +2145,7 @@ function initCropper() {
                 artPreview.style.display = 'block';
                 if (artPlaceholder) artPlaceholder.style.display = 'none';
                 if (removeBtn) removeBtn.classList.add('show');
-                renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', document.getElementById('editPlaylistColor').value, base64);
+                renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', 'editPlaylistColorHex', document.getElementById('editPlaylistColor').value, base64);
             }
         }
 
