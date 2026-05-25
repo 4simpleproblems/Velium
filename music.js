@@ -2030,7 +2030,16 @@ function parseLyrics(lyricsText, duration) {
     // Insert dots for long breaks
     const finalParsed = [];
     
-    // Skip start wait dots
+    // Handle start wait (instrumental intro)
+    if (parsed.length > 0 && parsed[0].time > 5) {
+        finalParsed.push({ 
+            time: 0, 
+            endTime: parsed[0].time - 0.5,
+            type: 'dots', 
+            text: '...' 
+        });
+    }
+
     for (let i = 0; i < parsed.length; i++) {
         finalParsed.push(parsed[i]);
         if (i < parsed.length - 1 && parsed[i+1].time - parsed[i].time > 5) {
@@ -2047,8 +2056,8 @@ function parseLyrics(lyricsText, duration) {
 function updateLyricsSync(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
     
-    // Add a lead-in offset so lyrics change before they are said
-    const adjustedTime = currentTime + 0.6;
+    // Adjusted lead-in for tight sync
+    const adjustedTime = currentTime + 0.35;
     
     let activeIndex = -1;
     for (let i = 0; i < parsedLyrics.length; i++) {
@@ -2058,7 +2067,6 @@ function updateLyricsSync(currentTime) {
             break;
         }
     }
-    if (activeIndex === -1) return;
 
     const updateUI = (container, isVisible) => {
         if (!container) return;
