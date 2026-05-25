@@ -1015,11 +1015,6 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
         <div class="track-num-col">
             <span class="row-num">${index + 1}</span>
             <i class="fa-solid fa-play row-play"></i>
-            <div class="playing-bars">
-                <div></div>
-                <div></div>
-                <div></div>
-            </div>
         </div>
         <div class="track-info">
             <div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
@@ -1175,14 +1170,14 @@ async function playTrack(index) {
         preloadTracks();
         return;
     }
-    if (currentTrack.youtube_id || currentTrack.videoId) {
-        loadYouTubePlayer(currentTrack.youtube_id || currentTrack.videoId);
-        preloadTracks();
-        return;
-    }
     const directUrl = getDownloadUrl(currentTrack);
     if (directUrl) {
         loadAudioPlayer(directUrl);
+        preloadTracks();
+        return;
+    }
+    if (currentTrack.youtube_id || currentTrack.videoId) {
+        loadYouTubePlayer(currentTrack.youtube_id || currentTrack.videoId);
         preloadTracks();
         return;
     }
