@@ -115,18 +115,43 @@ function observeImages(container) {
 function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    const existingToasts = Array.from(container.querySelectorAll('div'));
-    if (existingToasts.some(t => t.textContent === message)) return;
+    
+    // Check if same toast is already visible
+    const existingToasts = Array.from(container.querySelectorAll('.velium-toast'));
+    if (existingToasts.some(t => t.querySelector('.toast-msg')?.textContent === message)) return;
+
     const toast = document.createElement('div');
-    toast.className = `px-6 py-3 rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 text-white text-sm font-medium shadow-2xl animate-in slide-in-from-bottom-4 duration-300`;
-    if (type === 'success') toast.classList.add('border-green-500/50');
-    else if (type === 'error') toast.classList.add('border-red-500/50');
-    toast.textContent = message;
+    
+    let iconClass = 'fa-info-circle text-blue-400';
+    let borderColor = 'border-white/10';
+    if (type === 'success') {
+        iconClass = 'fa-check-circle text-green-400';
+        borderColor = 'border-green-500/30';
+    } else if (type === 'error') {
+        iconClass = 'fa-exclamation-circle text-red-400';
+        borderColor = 'border-red-500/30';
+    }
+
+    toast.className = `velium-toast flex items-center gap-3 px-5 py-3 rounded-xl bg-black/80 backdrop-blur-xl border ${borderColor} text-white shadow-2xl animate-in slide-in-from-right-10 duration-500 pointer-events-auto cursor-pointer`;
+    
+    toast.innerHTML = `
+        <i class="fa-solid ${iconClass} text-lg"></i>
+        <div class="toast-msg text-sm font-semibold tracking-wide">${message}</div>
+    `;
+
+    toast.onclick = () => {
+        toast.classList.add('animate-out', 'fade-out', 'slide-out-to-right-10');
+        setTimeout(() => toast.remove(), 500);
+    };
+
     container.appendChild(toast);
+    
     setTimeout(() => {
-        toast.classList.add('animate-out', 'fade-out', 'slide-out-to-bottom-4');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+        if (toast.parentElement) {
+            toast.classList.add('animate-out', 'fade-out', 'slide-out-to-right-10');
+            setTimeout(() => toast.remove(), 500);
+        }
+    }, 4000);
 }
 function getTrackUid(track) {
     if (!track) return null;
@@ -284,8 +309,7 @@ async function urlToBase64(url) {
     if (url.startsWith('data:')) return url;
     try {
         const response = await fetch(getProxyUrl(url));
-        const blob = await response.json().then(() => null).catch(() => response.blob());
-        if (!blob) return null;
+        const blob = await response.blob();
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
@@ -1202,8 +1226,13 @@ function loadAudioPlayer(url) {
         let errorCount = 0;
         audio.addEventListener('error', async () => {
             errorCount++;
-            console.warn(`Audio playback error (attempt ${errorCount}), falling back to YouTube`);
-            if (errorCount === 1) {
+            const currentUrl = audio.src || '';
+            const isArgon = currentUrl.includes('argon');
+            
+            console.warn(`Audio playback error (attempt ${errorCount}) for ${currentUrl}`);
+            
+            // If it's Argon and it failed, skip retry and go straight to fallback
+            if (errorCount === 1 && !isArgon) {
                 console.log("Retrying audio fetch...");
                 audio.load();
                 audio.play().catch(e => {
@@ -1211,13 +1240,24 @@ function loadAudioPlayer(url) {
                 });
                 return;
             }
+            
             if (currentTrack) {
+                showToast("Direct audio failed, falling back to YouTube...", "info");
                 const query = `${currentTrack.title} ${currentTrack.artist_name} official audio`;
                 try {
                     const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
                     const data = await response.json();
-                    if (data.videoId) loadYouTubePlayer(data.videoId);
-                } catch (e) { console.error('Fallback failed', e); setPlaybackLoading(false); }
+                    if (data.videoId) {
+                        loadYouTubePlayer(data.videoId);
+                    } else {
+                        showToast("Playback failed: No YouTube alternative found.", "error");
+                        setPlaybackLoading(false);
+                    }
+                } catch (e) { 
+                    console.error('Fallback failed', e); 
+                    showToast("Playback failed: Connection error.", "error");
+                    setPlaybackLoading(false); 
+                }
             }
         });
         audio.addEventListener('timeupdate', () => {
@@ -1243,7 +1283,7 @@ function loadAudioPlayer(url) {
             console.warn("Audio loading timed out, triggering fallback...");
             audio.dispatchEvent(new Event('error'));
         }
-    }, 15000);
+    }, 8000);
     audio.oncanplay = () => { clearTimeout(loadTimeout); setPlaybackLoading(false); };
     
     const playPromise = audio.play();

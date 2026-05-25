@@ -114,15 +114,22 @@ self.addEventListener('fetch', event => {
                             headers["referer"] = "https://soundcloud.com/";
                         }
 
-                        const response = await bareClient.fetch(unroutedUrl, {
-                            headers,
-                            method: targetEvent.request.method,
-                            body: targetEvent.request.method === 'GET' || targetEvent.request.method === 'HEAD' ? null : await targetEvent.request.clone().arrayBuffer(),
-                            redirect: 'follow'
-                        });
+                        let response;
+                        try {
+                            response = await bareClient.fetch(unroutedUrl, {
+                                headers,
+                                method: targetEvent.request.method,
+                                body: targetEvent.request.method === 'GET' || targetEvent.request.method === 'HEAD' ? null : await targetEvent.request.clone().arrayBuffer(),
+                                redirect: 'follow'
+                            });
+                        } catch (bareError) {
+                            console.warn("Bare fetch threw error, falling back to UV:", bareError);
+                            return await uv.fetch(targetEvent);
+                        }
                         
                         if (!response.ok && response.status !== 304) {
-                            throw new Error(`Bare fetch failed with status ${response.status}`);
+                            console.warn(`Bare fetch failed with status ${response.status}, falling back to UV`);
+                            return await uv.fetch(targetEvent);
                         }
                         
                         return response;
