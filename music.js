@@ -795,12 +795,17 @@ async function loadArtistView(artistName, append = false) {
         // Deduplication Logic
         const seenUids = new Set();
         if (append) {
-            currentDynamicPlaylist.forEach(t => seenUids.add(getTrackUid(t)));
+            currentDynamicPlaylist.forEach(t => {
+                seenUids.add(getTrackUid(t));
+                seenUids.add(`${t.title.toLowerCase()}|${(t.artist_name || '').toLowerCase()}`);
+            });
         }
         artistTracks = artistTracks.filter(t => {
             const uid = getTrackUid(t);
-            if (seenUids.has(uid)) return false;
+            const titleArtist = `${t.title.toLowerCase()}|${(t.artist_name || '').toLowerCase()}`;
+            if (seenUids.has(uid) || seenUids.has(titleArtist)) return false;
             seenUids.add(uid);
+            seenUids.add(titleArtist);
             return true;
         });
 

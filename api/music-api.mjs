@@ -79,6 +79,19 @@ async function fetchJioSaavn(searchQuery, limitVal) {
   }
 }
 
+async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -140,11 +153,11 @@ export default async function handler(req, res) {
       if (!searchQuery) return res.status(400).json({ error: 'Missing query' });
       
       const [musicApiRes, ytMusicRes, argonRes, saavnRes] = await Promise.all([
-        fetch(`${MUSIC_API_BASE}/prepare/${encodeURIComponent(searchQuery)}`)
+        fetchWithTimeout(`${MUSIC_API_BASE}/prepare/${encodeURIComponent(searchQuery)}`)
             .then(r => r.ok ? r.json() : null)
             .then(async data => {
                 if (data && data.ID) {
-                    const songData = await fetch(`${MUSIC_API_BASE}/fetch/${data.ID}`).then(r => r.ok ? r.json() : null);
+                    const songData = await fetchWithTimeout(`${MUSIC_API_BASE}/fetch/${data.ID}`).then(r => r.ok ? r.json() : null);
                     return songData;
                 }
                 return null;
@@ -152,13 +165,14 @@ export default async function handler(req, res) {
             .catch(() => null),
         getYoutube().then(async yt => {
             try {
-                const search = await yt.music.search(searchQuery);
-                return search;
+                const searchPromise = yt.music.search(searchQuery);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 6000));
+                return await Promise.race([searchPromise, timeoutPromise]);
             } catch (e) {
                 return null;
             }
         }).catch(() => null),
-        fetch(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(searchQuery)}&offset=${offset || 0}&limit=${limit || 25}`)
+        fetchWithTimeout(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(searchQuery)}&offset=${offset || 0}&limit=${limit || 25}`)
             .then(r => r.ok ? r.json() : { collection: [] })
             .catch(() => ({ collection: [] })),
         fetchJioSaavn(searchQuery, limit).catch(() => null)

@@ -3,38 +3,24 @@ importScripts('v-proxy/uv.config.js');
 importScripts('baremux/index.js');
 
 // Consistent SharedWorker worker path
-const workerPath = location.origin + "/baremux/worker.js";
-const connection = new BareMux.WorkerConnection(workerPath);
-const bareClient = new BareMux.BareClient(connection);
+const workerPath = "/baremux/worker.js";
+let connection = new BareMux.WorkerConnection(workerPath);
+let bareClient = new BareMux.BareClient(connection);
 
 importScripts(__uv$config.sw || 'v-proxy/uv.sw.js');
 
 const uv = new UVServiceWorker();
 uv.bareClient = bareClient;
 
-const xor = {
-    decode(str) {
-        if (!str) return str;
-        let [input, ...search] = str.split('?');
-        return (
-            decodeURIComponent(input)
-                .split('')
-                .map((char, ind) =>
-                    ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char
-                )
-                .join('') + (search.length ? '?' + search.join('?') : '')
-        );
-    }
-};
-
-// Sync port from main thread
+// Sync port from main thread or other clients
 self.addEventListener('message', (event) => {
     if (event.data && (event.data.type === 'baremuxinit' || event.data.type === 'baremuxready')) {
-        const port = event.data.port || (event.ports && event.ports[0]);
-        if (port) {
-            connection.port = port;
-            console.log("VELIUM SW: BareMux Port Synced (" + event.data.type + ")");
-        }
+        const path = event.data.path || workerPath;
+        // Re-initialize to refresh connection
+        connection = new BareMux.WorkerConnection(path);
+        bareClient = new BareMux.BareClient(connection);
+        uv.bareClient = bareClient;
+        console.log("VELIUM SW: BareMux Connection Refreshed (" + event.data.type + ")");
     }
 });
 
@@ -54,7 +40,7 @@ self.addEventListener('fetch', event => {
         (async () => {
             // Auto-proxy certain domains or encoded URLs even if prefix is missing
             const isEncoded = url.includes('/hvtrs8');
-            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com') || url.includes('scdn.co') || url.includes('mzstatic.com');
+            const isMediaDomain = url.includes('saavncdn.com') || url.includes('soundcloud.com') || url.includes('sndcdn.com') || url.includes('fastly.net') || url.includes('googleusercontent.com') || url.includes('ggpht.com') || url.includes('scdn.co') || url.includes('mzstatic.com') || url.includes('ytimg.com');
             
             let targetEvent = event;
             let shouldRoute = uv.route(event);
@@ -84,7 +70,7 @@ self.addEventListener('fetch', event => {
                 try {
                     if (targetEvent.request.url.includes('hvtrs8')) {
                         const encodedPart = targetEvent.request.url.split('hvtrs8')[1];
-                        unroutedUrl = xor.decode('hvtrs8' + encodedPart);
+                        unroutedUrl = Ultraviolet.codec.xor.decode('hvtrs8' + encodedPart);
                     } else {
                         unroutedUrl = uv.unroute(targetEvent);
                     }
@@ -101,7 +87,8 @@ self.addEventListener('fetch', event => {
                                     targetEvent.request.destination === 'audio' ||
                                     unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg|json)(\?|$)/i) ||
                                     unroutedUrl.includes('googleusercontent.com') ||
-                                    unroutedUrl.includes('saavncdn.com');
+                                    unroutedUrl.includes('saavncdn.com') ||
+                                    unroutedUrl.includes('ytimg.com');
 
                     if (isMedia) {
                         try {
@@ -114,6 +101,10 @@ self.addEventListener('fetch', event => {
                             if (unroutedUrl.includes("soundcloud.com") || unroutedUrl.includes("sndcdn.com")) {
                                 headers["origin"] = "https://soundcloud.com";
                                 headers["referer"] = "https://soundcloud.com/";
+                            }
+                            
+                            if (unroutedUrl.includes("ytimg.com")) {
+                                headers["referer"] = "https://www.youtube.com/";
                             }
 
                             // Use Bare client directly - much faster for media than full UV routing
@@ -128,7 +119,7 @@ self.addEventListener('fetch', event => {
                                 return response;
                             }
                         } catch (mediaError) {
-                            console.warn("VELIUM SW: Media direct fetch failed, falling back", unroutedUrl);
+                            // Silently fallback to UV on error
                         }
                     }
                 }
