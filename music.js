@@ -1202,6 +1202,12 @@ let audioAnalysisContext = null;
 let analyserNode = null;
 let audioSourceNode = null;
 let vocalDetectedTime = null;
+let analysisCalibration = {
+    noiseFloor: 0,
+    peakVocal: 0,
+    samples: 0,
+    isCalibrated: false
+};
 
 function initAudioAnalysis(audioElement) {
     if (!audioElement) return;
@@ -1209,8 +1215,8 @@ function initAudioAnalysis(audioElement) {
         if (!audioAnalysisContext) {
             audioAnalysisContext = new (window.AudioContext || window.webkitAudioContext)();
             analyserNode = audioAnalysisContext.createAnalyser();
-            analyserNode.fftSize = 512;
-            analyserNode.smoothingTimeConstant = 0.8;
+            analyserNode.fftSize = 1024; // Better resolution
+            analyserNode.smoothingTimeConstant = 0.5; // Faster response
         }
         
         if (audioSourceNode) {
@@ -1220,6 +1226,7 @@ function initAudioAnalysis(audioElement) {
         audioSourceNode = audioAnalysisContext.createMediaElementSource(audioElement);
         audioSourceNode.connect(analyserNode);
         analyserNode.connect(audioAnalysisContext.destination);
+        console.log("VELIUM: Audio analysis system re-initialized");
     } catch (e) {
         console.warn("Audio analysis init failed:", e);
     }
@@ -1227,49 +1234,52 @@ function initAudioAnalysis(audioElement) {
 
 function startVocalDetection() {
     vocalDetectedTime = null;
+    analysisCalibration = { noiseFloor: 0, peakVocal: 0, samples: 0, isCalibrated: false };
+    
     if (!analyserNode || activeSource !== 'audio') return;
     
     const bufferLength = analyserNode.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     let detectCount = 0;
-    const requiredDetects = 5; // Sustain detection for ~100ms
     
     const check = () => {
         if (vocalDetectedTime || activeSource !== 'audio' || !isPlaying) return;
         
         analyserNode.getByteFrequencyData(dataArray);
         
-        // Human voice range: approx 300Hz to 3000Hz
-        // FFT size 512, sample rate 44100 -> bin size ~86Hz
-        // Vocal bins: ~4 to ~35
-        let vocalEnergy = 0;
-        for (let i = 4; i < 35; i++) {
-            vocalEnergy += dataArray[i];
+        // Vocal focus: 400Hz - 2500Hz
+        // FFT 1024, Sample 44100 -> bin ~43Hz
+        // Vocal bins: ~9 to ~58
+        let currentEnergy = 0;
+        for (let i = 9; i < 58; i++) {
+            currentEnergy += dataArray[i];
         }
-        vocalEnergy /= 31;
+        currentEnergy /= 49;
         
-        // Threshold: substantial energy in vocal range
-        if (vocalEnergy > 100) {
+        const audio = document.getElementById('nativeAudio');
+        const currentTime = audio ? audio.currentTime : 0;
+
+        // Stage 1: Calibration (first 1.5s of audio usually noise/instrumental floor)
+        if (!analysisCalibration.isCalibrated && currentTime < 1.5) {
+            analysisCalibration.noiseFloor = (analysisCalibration.noiseFloor * analysisCalibration.samples + currentEnergy) / (analysisCalibration.samples + 1);
+            analysisCalibration.samples++;
+            if (currentTime > 1.2) analysisCalibration.isCalibrated = true;
+            requestAnimationFrame(check);
+            return;
+        }
+
+        // Stage 2: Detection
+        // Look for energy at least 40% higher than noise floor AND above absolute threshold
+        const threshold = Math.max(70, analysisCalibration.noiseFloor * 1.4);
+        
+        if (currentEnergy > threshold) {
             detectCount++;
-            if (detectCount >= requiredDetects) {
-                const audio = document.getElementById('nativeAudio');
-                if (audio) {
-                    vocalDetectedTime = audio.currentTime;
-                    console.log(`VELIUM: Vocal onset detected at ${vocalDetectedTime.toFixed(2)}s`);
-                    
-                    // If we found vocals earlier than the first lyric (and it's not dots)
-                    // we can potentially trigger the sync earlier
-                    if (parsedLyrics && parsedLyrics.length > 0) {
-                        const firstLyric = parsedLyrics.find(l => l.type !== 'dots');
-                        if (firstLyric && Math.abs(vocalDetectedTime - firstLyric.time) < 3) {
-                             // Tighten the sync if detection is close to expected time
-                             console.log("VELIUM: Auto-aligning lyrics to detected onset");
-                        }
-                    }
-                }
+            if (detectCount >= 8) { // ~130ms of sustained energy
+                vocalDetectedTime = currentTime - 0.15; // Offset for detection delay
+                console.log(`VELIUM: Vocal onset detected at ${vocalDetectedTime.toFixed(2)}s (Floor: ${analysisCalibration.noiseFloor.toFixed(1)}, Energy: ${currentEnergy.toFixed(1)})`);
             }
         } else {
-            detectCount = 0;
+            detectCount = Math.max(0, detectCount - 1);
         }
         
         if (!vocalDetectedTime) requestAnimationFrame(check);
