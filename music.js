@@ -498,8 +498,8 @@ function setupEventListeners() {
     document.addEventListener('fullscreenchange', () => {
         if (!document.fullscreenElement) {
             const fs = document.getElementById('fsPlayer');
-            if (fs && fs.style.display === 'flex') {
-                fs.style.display = 'none';
+            if (fs && fs.classList.contains('active')) {
+                fs.classList.remove('active');
                 document.body.style.overflow = '';
             }
         }
@@ -532,24 +532,25 @@ function setupEventListeners() {
 window.toggleFullscreenPlayer = function() {
     const fs = document.getElementById('fsPlayer');
     if (!fs) return;
-    if (fs.style.display !== 'flex') {
+    
+    if (!fs.classList.contains('active')) {
         if (!currentTrack) {
             showToast('No track playing', 'info');
             return;
         }
-        fs.style.display = 'flex';
+        fs.classList.add('active');
         document.body.style.overflow = 'hidden';
         if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
         updateFullscreenUI();
     } else {
-        fs.style.display = 'none';
+        fs.classList.remove('active');
         document.body.style.overflow = '';
         if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
     }
 };
 function closeFullscreenIfNoTrack() {
     const fs = document.getElementById('fsPlayer');
-    if (fs && fs.style.display === 'flex') {
+    if (fs && fs.classList.contains('active')) {
         window.toggleFullscreenPlayer();
     }
 }

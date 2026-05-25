@@ -358,7 +358,8 @@
     .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; }
     .btn-flat { background: none; border: none; color: var(--text-main); font-weight: 700; cursor: pointer; padding: 8px 16px; }
     .btn-flat.primary { background-color: var(--text-main); color: #000; border-radius: 24px; padding: 12px 32px; }
-    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; transition: opacity 0.5s; padding: 5vh 5vw; font-family: 'Manrope', sans-serif; overflow: hidden; box-sizing: border-box; }
+    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: flex; flex-direction: column; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease; padding: 5vh 5vw; font-family: 'Manrope', sans-serif; overflow: hidden; box-sizing: border-box; transform: translateY(100%); opacity: 0; pointer-events: none; }
+    .fullscreen-overlay.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
     .fs-background { 
       position: absolute; 
       inset: -10% !important; 
@@ -375,7 +376,7 @@
     .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8vw; transition: all 0.5s ease; overflow: visible; min-height: 0; padding: 40px; }
     .fs-main.no-lyrics { flex-direction: column; gap: 40px; }
     .fs-main.no-lyrics .fs-lyrics-container { display: none; }
-    .fs-main.no-lyrics .fs-art-container { width: 60vh; height: 60vh; max-width: 80vw; max-height: 80vw; }
+    .fs-main.no-lyrics .fs-art-container { width: 40vh; height: 40vh; max-width: 80vw; max-height: 80vw; }
     
     .fs-art-container { width: 40vh; height: 40vh; max-width: 45vw; max-height: 45vw; flex-shrink: 0; box-shadow: 0 20px 80px rgba(0,0,0,0.8); background: #222; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 5; margin: 60px; overflow: visible; }
     .fs-art-container img { width: 100%; height: 100%; object-fit: cover; }
@@ -399,7 +400,7 @@
     .fs-lyrics-container .active { font-size: 48px; color: #fff; opacity: 1; }
     .fs-lyrics-container.hidden { display: none !important; }
     .fs-main.lyrics-hidden .fs-lyrics-container { display: none !important; }
-    .fs-main.lyrics-hidden .fs-art-container { width: 70vh; height: 70vh; max-width: 80vw; max-height: 80vw; }
+    .fs-main.lyrics-hidden .fs-art-container { width: 40vh; height: 40vh; max-width: 80vw; max-height: 80vw; }
     
     .track-heart-btn { background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s, color 0.2s; font-size: 14px; }
     .track-row:hover .track-heart-btn { opacity: 1; }
