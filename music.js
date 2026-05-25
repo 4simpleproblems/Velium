@@ -33,21 +33,34 @@ function getProxyUrl(url, size = null) {
     if (!url) return url;
     if (typeof url !== 'string') return url;
     if (url.startsWith('data:')) return url;
+
+    // Default high-res for Saavn
     if (url.includes('saavncdn.com')) {
         if (size) {
             url = url.replace(/_([0-9]+x[0-9]+|150|500)\.jpg/i, `_${size}.jpg`);
         } else {
-            url = url.replace(/_([0-9]+x[0-9]+|150|500)\.jpg/i, `_250x250.jpg`);
+            url = url.replace(/_([0-9]+x[0-9]+|150|500)\.jpg/i, `_500x500.jpg`);
         }
     }
-    // High quality for Google/YouTube images
+
+    // Default high-res for Google/YouTube images
     if (url.includes('googleusercontent.com') || url.includes('ggpht.com')) {
-        if (size === '500x500' || size === '1000x1000') {
-            url = url.replace(/=s[0-9]+/, '=s1000');
-        } else if (size === '50x50') {
-            url = url.replace(/=s[0-9]+/, '=s50');
+        const targetSize = (size === '50x50') ? 's50' : 'w1000-h1000-l90-rj';
+        if (url.includes('=')) {
+            url = url.split('=')[0] + '=' + targetSize;
+        } else {
+            url += '=' + targetSize;
         }
     }
+
+    // Default high-res for i.ytimg.com
+    if (url.includes('i.ytimg.com')) {
+        url = url.replace('/default.jpg', '/maxresdefault.jpg')
+                 .replace('/mqdefault.jpg', '/maxresdefault.jpg')
+                 .replace('/hqdefault.jpg', '/maxresdefault.jpg')
+                 .replace('/sddefault.jpg', '/maxresdefault.jpg');
+    }
+
     if (url.startsWith('//')) url = 'https:' + url;
     const prefix = (window.__uv$config && window.__uv$config.prefix) || "/v-proxy/service/";
     const encode = (window.__uv$config && window.__uv$config.encodeUrl) || (window.Ultraviolet && window.Ultraviolet.codec && window.Ultraviolet.codec.xor && window.Ultraviolet.codec.xor.encode);
@@ -57,8 +70,7 @@ function getProxyUrl(url, size = null) {
         return prefix + encoded;
     }
     return url;
-}
-let isInitialized = false;
+}let isInitialized = false;
 let currentTrack = null;
 let playlist = [];
 let originalPlaylist = [];
@@ -648,11 +660,8 @@ async function loadArtistView(artistName, append = false) {
     try {
         const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(artistName)}&limit=${artistSearchState.limit}&offset=${artistSearchState.offset}`);
         const data = await response.json();
-        const rawTracks = data.tracks || [];
-        let artistTracks = rawTracks.filter(t =>
-            (t.artist_name || '').toLowerCase() === artistName.toLowerCase() ||
-            (t.artist || '').toLowerCase() === artistName.toLowerCase()
-        );
+        const rawTracks = (data.tracks || []).filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist');
+        let artistTracks = rawTracks.filter(t => (t.artist_name || '').toLowerCase() === artistName.toLowerCase() || (t.artist || '').toLowerCase() === artistName.toLowerCase());
         if (!append && artistTracks.length === 0 && rawTracks.length > 0) {
             artistTracks = rawTracks.slice(0, 20);
         }
@@ -715,9 +724,10 @@ async function loadPopularTracks() {
         const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&limit=12`);
         const data = await response.json();
         if (data.tracks) {
-            renderTrackGrid(data.tracks.slice(0, 12), grid);
+            const filteredTracks = data.tracks.filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist').slice(0, 12);
+            renderTrackGrid(filteredTracks, grid);
             observeImages(grid);
-            return data.tracks.slice(0, 12);
+            return filteredTracks;
         }
     } catch (e) { console.error('Failed to load popular tracks', e); }
     return null;
@@ -760,7 +770,7 @@ async function handleSearch(query, append = false, forcedOffset = null) {
     try {
         const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`);
         const data = await response.json();
-        const newTracks = data.tracks || [];
+        const newTracks = (data.tracks || []).filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist');
         currentSearchResults.push(...newTracks);
         if (!append && tracksGrid) tracksGrid.innerHTML = '';
         if (tracksGrid && newTracks.length > 0) {
@@ -820,6 +830,10 @@ function renderTrackGrid(tracks, container, parentList = null) {
     const isHomeView = container.id === 'popularTracks';
     
     tracks.forEach((track) => {
+        // Filter out undesirable artists
+        const artist = (track.artist_name || track.artist || '').trim();
+        if (artist === 'YT Music Artist') return;
+
         const trackUid = getTrackUid(track);
         const card = document.createElement('div');
         card.className = 'track-card';
