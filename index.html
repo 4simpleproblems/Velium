@@ -274,14 +274,15 @@
     .track-duration { text-align: right; color: var(--text-subdued); font-variant-numeric: tabular-nums; min-width: 50px; }
     
     /* Playing Bar Animation */
-    .playing-bars { display: none; width: 24px; height: 24px; gap: 3px; align-items: flex-end; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; }
+    .playing-bars { display: none; width: 24px; height: 24px; gap: 3px; align-items: flex-end; justify-content: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; }
     .playing-bars div { background-color: #fff; width: 4px; border-radius: 2px !important; animation: bar-bounce 1s infinite ease-in-out; }
     .playing-bars div:nth-child(2) { animation-delay: 0.2s; }
     .playing-bars div:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bar-bounce { 0%, 100% { height: 6px; } 50% { height: 20px; } }
     .track-row.is-playing .playing-bars { display: flex; }
     .track-row.is-playing .track-thumb { filter: brightness(0.4); }
-    .track-row.is-playing .row-num, .track-row.is-playing .row-play { display: none !important; }
+    .track-row.is-playing.paused .playing-bars div { animation: none !important; height: 6px !important; }
+    .track-row.is-playing:not(.paused) .row-play::before { content: "\f04c"; }
 
     .right-panel { 
       grid-area: panel; 

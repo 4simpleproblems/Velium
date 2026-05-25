@@ -1014,7 +1014,7 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
     const trackUid = getTrackUid(track);
     const isCurrentlyPlaying = currentTrack && getTrackUid(currentTrack) === trackUid;
     
-    div.className = 'track-row' + (isCurrentlyPlaying ? ' is-playing' : '');
+    div.className = 'track-row' + (isCurrentlyPlaying ? ' is-playing' : '') + (isCurrentlyPlaying && !isPlaying ? ' paused' : '');
     div.dataset.trackUid = trackUid;
     let durationSec = 0;
     if (track.duration) durationSec = track.duration > 10000 ? track.duration / 1000 : track.duration;
@@ -1087,7 +1087,12 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
         originalPlaylist = [...trackList];
         
         const freshIndex = playlist.findIndex(t => getTrackUid(t) === trackUid);
-        playTrack(freshIndex > -1 ? freshIndex : index);
+        const isCurrent = currentTrack && getTrackUid(currentTrack) === trackUid;
+        if (isCurrent) {
+            togglePlayPause();
+        } else {
+            playTrack(freshIndex > -1 ? freshIndex : index);
+        }
     });
     return div;
 }
@@ -1143,9 +1148,14 @@ async function playTrack(index) {
         else generateShuffledSequence();
     }
     
-    // Update active track styling in lists
     document.querySelectorAll('.track-row').forEach(row => {
-        row.classList.toggle('is-playing', row.dataset.trackUid === getTrackUid(currentTrack));
+        const isCurrent = row.dataset.trackUid === getTrackUid(currentTrack);
+        row.classList.toggle('is-playing', isCurrent);
+        if (isCurrent) {
+            row.classList.toggle('paused', !isPlaying);
+        } else {
+            row.classList.remove('paused');
+        }
     });
 
     document.getElementById('currentTrackName').textContent = currentTrack.title;
@@ -1459,6 +1469,14 @@ function updatePlayPauseUI() {
     if (btn) btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:2px;"></i>';
     const fsBtn = document.getElementById('fsPlayPause');
     if (fsBtn) fsBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:4px;"></i>';
+    
+    document.querySelectorAll('.track-row').forEach(row => {
+        if (row.classList.contains('is-playing')) {
+            row.classList.toggle('paused', !isPlaying);
+        } else {
+            row.classList.remove('paused');
+        }
+    });
 }
 function playNext() {
     if (playlist.length === 0) {
