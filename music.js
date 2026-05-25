@@ -2434,6 +2434,7 @@ async function fetchLyrics() {
                 }
                 
                 const contextAttr = (line.time !== null) ? `oncontextmenu="calibrateLyrics(event, ${idx})"` : '';
+                const untimedClass = (line.time === null || line.time === undefined) ? 'untimed' : '';
                 
                 let lineHtml = '';
                 if (line.words) {
@@ -2443,9 +2444,9 @@ async function fetchLyrics() {
                 }
 
                 if (line.time !== null && line.time !== undefined) {
-                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})" ${contextAttr}>${lineHtml}</div>`;
+                    return `<div class="lyric-line ${untimedClass}" onclick="seekToLyrics(${line.time})" ${contextAttr}>${lineHtml}</div>`;
                 } else {
-                    return `<div class="lyric-line" ${contextAttr}>${lineHtml}</div>`;
+                    return `<div class="lyric-line ${untimedClass}" ${contextAttr}>${lineHtml}</div>`;
                 }
             }).join('');
             if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
