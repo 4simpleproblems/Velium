@@ -2030,11 +2030,11 @@ function parseLyrics(lyricsText, duration) {
     // Insert dots for long breaks
     const finalParsed = [];
     
-    // Handle start wait (instrumental intro)
-    if (parsed.length > 0 && parsed[0].time > 5) {
+    // Handle start wait (instrumental intro) - if first lyric starts after 3s
+    if (parsed.length > 0 && parsed[0].time > 3) {
         finalParsed.push({ 
             time: 0, 
-            endTime: parsed[0].time - 0.5,
+            endTime: parsed[0].time - 1,
             type: 'dots', 
             text: '...' 
         });
@@ -2042,10 +2042,11 @@ function parseLyrics(lyricsText, duration) {
 
     for (let i = 0; i < parsed.length; i++) {
         finalParsed.push(parsed[i]);
-        if (i < parsed.length - 1 && parsed[i+1].time - parsed[i].time > 5) {
+        // Only insert dots if gap is > 8s and we have at least 4s for the current line
+        if (i < parsed.length - 1 && (parsed[i+1].time - parsed[i].time > 8)) {
             finalParsed.push({ 
-                time: parsed[i].time + 1, 
-                endTime: parsed[i+1].time - 0.5,
+                time: parsed[i].time + 4, 
+                endTime: parsed[i+1].time - 1,
                 type: 'dots', 
                 text: '...' 
             });
@@ -2073,11 +2074,10 @@ function updateLyricsSync(currentTime) {
         const lines = container.querySelectorAll('.lyric-line');
         lines.forEach((line, index) => {
             if (index === activeIndex) {
-                if (!line.classList.contains('active')) {
-                    line.classList.add('active');
-                    if (isVisible) {
-                        line.scrollIntoView({ behavior: 'auto', block: 'center' });
-                    }
+                line.classList.add('active');
+                line.classList.remove('next-up');
+                if (isVisible) {
+                    line.scrollIntoView({ behavior: 'auto', block: 'center' });
                 }
                 
                 // Handle dots animation
@@ -2087,17 +2087,22 @@ function updateLyricsSync(currentTime) {
                     const dotEls = dots.querySelectorAll('.lyric-dot');
                     const startTime = parsedLyrics[index].time;
                     const endTime = parsedLyrics[index].endTime;
-                    const duration = endTime - startTime;
+                    const duration = Math.max(0.1, endTime - startTime);
                     const progress = (adjustedTime - startTime) / duration;
                     
                     dotEls.forEach((dot, i) => {
-                        const threshold = (i + 1) / 4; // 3 dots, 4 segments
+                        const threshold = (i + 1) / 4; 
                         if (progress > threshold) dot.classList.add('highlight');
                         else dot.classList.remove('highlight');
                     });
                 }
             } else {
                 line.classList.remove('active');
+                if (index === activeIndex + 1) {
+                    line.classList.add('next-up');
+                } else {
+                    line.classList.remove('next-up');
+                }
                 const dots = line.querySelector('.lyric-dots');
                 if (dots) dots.classList.remove('active');
             }
@@ -2109,7 +2114,7 @@ function updateLyricsSync(currentTime) {
     updateUI(panelContent, isLyricsPanel);
 
     const fsPlayer = document.getElementById('fsPlayer');
-    const isFsVisible = fsPlayer && fsPlayer.style.display === 'flex';
+    const isFsVisible = fsPlayer && fsPlayer.classList.contains('active');
     const fsLyrics = document.querySelector('.fs-lyrics-container');
     updateUI(fsLyrics, isFsVisible);
 }
