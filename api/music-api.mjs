@@ -433,6 +433,20 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Lyrics not found' });
     }
 
+    if (endpoint === 'stream') {
+      const videoId = id || req.query.id;
+      if (!videoId) return res.status(400).json({ error: 'Missing videoId' });
+      try {
+        const yt = await getYoutube();
+        const info = await yt.getBasicInfo(videoId);
+        const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+        const streamUrl = format.decipher(yt.session.player);
+        return res.status(200).json({ url: streamUrl });
+      } catch (e) {
+        return res.status(500).json({ error: 'Failed to get stream URL', message: e.message });
+      }
+    }
+
     if (endpoint === 'youtube-search') {
         const searchQuery = q || query;
         if (!searchQuery) return res.status(400).json({ error: 'Missing query' });
