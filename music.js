@@ -2348,56 +2348,36 @@ async function fetchLyrics() {
 
     try {
         let lyricsText = null;
-        try {
-            const trackName = currentTrack.title;
-            const artistName = currentTrack.artist_name;
-            let durationSec = 0;
-            if (currentTrack.duration) {
-                durationSec = currentTrack.duration > 1000 ? currentTrack.duration / 1000 : currentTrack.duration;
-            }
-            
-            if (getTrackUid(currentTrack) !== playingWhenStarted) return;
-
-            let lrclibUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artistName)}&track_name=${encodeURIComponent(trackName)}`;
-            if (durationSec > 0) {
-                lrclibUrl += `&duration=${Math.round(durationSec)}`;
-            }
-            const lrclibRes = await fetch(getProxyUrl(lrclibUrl));
-            if (getTrackUid(currentTrack) !== playingWhenStarted) return;
-
-            if (lrclibRes.ok) {
-                const lrclibData = await lrclibRes.json();
-                lyricsText = lrclibData.syncedLyrics || lrclibData.plainLyrics;
-            } else {
-                const lrclibSearchRes = await fetch(getProxyUrl(`https://lrclib.net/api/search?q=${encodeURIComponent(trackName + ' ' + artistName)}`));
-                if (lrclibSearchRes.ok) {
-                    const searchResults = await lrclibSearchRes.json();
-                    if (searchResults && searchResults.length > 0) {
-                        lyricsText = searchResults[0].syncedLyrics || searchResults[0].plainLyrics;
-                    }
+        let id = currentTrack.youtube_id || currentTrack.videoId;
+        if (!id) {
+            const query = `${currentTrack.title} ${currentTrack.artist_name}`;
+            try {
+                const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
+                const searchData = await searchRes.json();
+                if (searchData.videoId) {
+                    id = searchData.videoId;
+                    currentTrack.youtube_id = id;
+                    currentTrack.videoId = id;
                 }
+            } catch (err) {
+                console.error(err);
             }
-        } catch (err) {
-            console.error(err);
         }
-        if (!lyricsText) {
-            let id = currentTrack.youtube_id || currentTrack.videoId;
-            if (!id) {
-                const query = `${currentTrack.title} ${currentTrack.artist_name}`;
-                try {
-                    const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-                    const searchData = await searchRes.json();
-                    if (searchData.videoId) {
-                        id = searchData.videoId;
-                        currentTrack.youtube_id = id;
-                        currentTrack.videoId = id;
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-            if (!id) id = getTrackUid(currentTrack);
-            const response = await fetch(`${API_BASE_URL}/lyrics/${id}`);
+        if (!id) id = getTrackUid(currentTrack);
+
+        const trackName = currentTrack.title;
+        const artistName = currentTrack.artist_name;
+        let durationSec = 0;
+        if (currentTrack.duration) {
+            durationSec = currentTrack.duration > 1000 ? currentTrack.duration / 1000 : currentTrack.duration;
+        }
+
+        if (getTrackUid(currentTrack) !== playingWhenStarted) return;
+
+        const response = await fetch(`${API_BASE_URL}/lyrics/${id}?title=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}&duration=${Math.round(durationSec)}`);
+        if (getTrackUid(currentTrack) !== playingWhenStarted) return;
+
+        if (response.ok) {
             const data = await response.json();
             lyricsText = data.lyrics;
         }

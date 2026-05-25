@@ -480,6 +480,7 @@ export default async function handler(req, res) {
 
     if (endpoint === 'lyrics' || pathname.includes('/lyrics/')) {
         const songId = id || pathParts[pathParts.length - 1];
+        const { title, artist, duration } = req.query;
         
         if (songId.startsWith('mapi-')) {
             const mapiId = songId.replace('mapi-', '');
@@ -489,31 +490,62 @@ export default async function handler(req, res) {
             }
         }
 
-        try {
-            const yt = await getYoutube();
-            const lyrics = await yt.music.getLyrics(songId.replace('ytm-', ''));
-            
-            if (lyrics) {
-                // If it has timed lyrics, convert them to LRC format for consistency
-                if (lyrics.content && Array.isArray(lyrics.content.lines)) {
-                    const lrcLines = lyrics.content.lines.map(line => {
-                        const start = line.start_time_ms || 0;
-                        const min = Math.floor(start / 60000);
-                        const sec = ((start % 60000) / 1000).toFixed(2);
-                        return `[${min.toString().padStart(2, '0')}:${sec.padStart(5, '0')}]${line.text}`;
-                    });
-                    return res.status(200).json({ lyrics: lrcLines.join('\n'), source: 'YTMusic-Timed' });
+        if (title && artist) {
+            try {
+                let lrclibUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
+                if (duration && parseInt(duration) > 0) {
+                    lrclibUrl += `&duration=${Math.round(parseInt(duration))}`;
+                }
+                const lrclibRes = await fetch(lrclibUrl);
+                if (lrclibRes.ok) {
+                    const lrclibData = await lrclibRes.json();
+                    const lyrics = lrclibData.syncedLyrics || lrclibData.plainLyrics;
+                    if (lyrics) {
+                        return res.status(200).json({ lyrics, source: 'LrcLib' });
+                    }
                 }
 
-                if (lyrics.description) {
-                    return res.status(200).json({ lyrics: lyrics.description.toString(), source: 'YTMusic' });
+                const lrclibSearchRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(title + ' ' + artist)}`);
+                if (lrclibSearchRes.ok) {
+                    const searchResults = await lrclibSearchRes.json();
+                    if (searchResults && searchResults.length > 0) {
+                        const lyrics = searchResults[0].syncedLyrics || searchResults[0].plainLyrics;
+                        if (lyrics) {
+                            return res.status(200).json({ lyrics, source: 'LrcLib-Search' });
+                        }
+                    }
                 }
+            } catch (e) {
+                console.error(e);
             }
-        } catch (e) {
-            console.error(e);
         }
 
-        return res.status(404).json({ error: 'Lyrics not found' });
+        if (songId && !songId.includes('f-') && !songId.startsWith('mapi-') && !songId.startsWith('saavn-') && !songId.startsWith('argon-')) {
+            try {
+                const yt = await getYoutube();
+                const lyrics = await yt.music.getLyrics(songId.replace('ytm-', ''));
+                
+                if (lyrics) {
+                    if (lyrics.content && Array.isArray(lyrics.content.lines)) {
+                        const lrcLines = lyrics.content.lines.map(line => {
+                            const start = line.start_time_ms || 0;
+                            const min = Math.floor(start / 60000);
+                            const sec = ((start % 60000) / 1000).toFixed(2);
+                            return `[${min.toString().padStart(2, '0')}:${sec.padStart(5, '0')}]${line.text}`;
+                        });
+                        return res.status(200).json({ lyrics: lrcLines.join('\n'), source: 'YTMusic-Timed' });
+                    }
+
+                    if (lyrics.description) {
+                        return res.status(200).json({ lyrics: lyrics.description.toString(), source: 'YTMusic' });
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        return res.status(200).json({ lyrics: null, error: 'Lyrics not found' });
     }
 
     if (endpoint === 'youtube-search') {
