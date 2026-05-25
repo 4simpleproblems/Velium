@@ -606,7 +606,7 @@ function updateFullscreenTint(imageUrl) {
         const maxComponent = Math.max(r, g, b);
         
         // Trigger bright-bg if brightness is high OR if color is very vibrant
-        if (brightness > 175 || (maxComponent > 220 && brightness > 100)) {
+        if (brightness > 140 || (maxComponent > 200 && brightness > 80)) {
             fs.classList.add('bright-bg');
         } else {
             fs.classList.remove('bright-bg');
@@ -2029,16 +2029,7 @@ function parseLyrics(lyricsText, duration) {
     // Insert dots for long breaks
     const finalParsed = [];
     
-    // Handle start wait
-    if (parsed.length > 0 && parsed[0].time > 3) {
-        finalParsed.push({ 
-            time: 0, 
-            endTime: parsed[0].time - 0.5,
-            type: 'dots', 
-            text: '...' 
-        });
-    }
-
+    // Skip start wait dots
     for (let i = 0; i < parsed.length; i++) {
         finalParsed.push(parsed[i]);
         if (i < parsed.length - 1 && parsed[i+1].time - parsed[i].time > 5) {
@@ -2055,8 +2046,8 @@ function parseLyrics(lyricsText, duration) {
 function updateLyricsSync(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
     
-    // Add a small lead-in offset so lyrics change slightly before they are said
-    const adjustedTime = currentTime + 0.3;
+    // Add a lead-in offset so lyrics change before they are said
+    const adjustedTime = currentTime + 0.6;
     
     let activeIndex = -1;
     for (let i = 0; i < parsedLyrics.length; i++) {
@@ -2076,7 +2067,7 @@ function updateLyricsSync(currentTime) {
                 if (!line.classList.contains('active')) {
                     line.classList.add('active');
                     if (isVisible) {
-                        line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        line.scrollIntoView({ behavior: 'auto', block: 'center' });
                     }
                 }
                 
