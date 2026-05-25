@@ -1117,6 +1117,7 @@ function setPlaybackLoading(isLoading) {
 async function playTrack(index) {
     currentIndex = index;
     currentTrack = playlist[currentIndex];
+    vocalDetectedTime = null; // Reset audio analysis state
     
     // Clear current lyrics UI and state immediately
     parsedLyrics = [];
@@ -1197,19 +1198,107 @@ async function playTrack(index) {
         }
     } catch (e) { console.error('Failed to get video ID', e); setPlaybackLoading(false); }
 }
+let audioAnalysisContext = null;
+let analyserNode = null;
+let audioSourceNode = null;
+let vocalDetectedTime = null;
+
+function initAudioAnalysis(audioElement) {
+    if (!audioElement) return;
+    try {
+        if (!audioAnalysisContext) {
+            audioAnalysisContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyserNode = audioAnalysisContext.createAnalyser();
+            analyserNode.fftSize = 512;
+            analyserNode.smoothingTimeConstant = 0.8;
+        }
+        
+        if (audioSourceNode) {
+            try { audioSourceNode.disconnect(); } catch(e) {}
+        }
+        
+        audioSourceNode = audioAnalysisContext.createMediaElementSource(audioElement);
+        audioSourceNode.connect(analyserNode);
+        analyserNode.connect(audioAnalysisContext.destination);
+    } catch (e) {
+        console.warn("Audio analysis init failed:", e);
+    }
+}
+
+function startVocalDetection() {
+    vocalDetectedTime = null;
+    if (!analyserNode || activeSource !== 'audio') return;
+    
+    const bufferLength = analyserNode.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    let detectCount = 0;
+    const requiredDetects = 5; // Sustain detection for ~100ms
+    
+    const check = () => {
+        if (vocalDetectedTime || activeSource !== 'audio' || !isPlaying) return;
+        
+        analyserNode.getByteFrequencyData(dataArray);
+        
+        // Human voice range: approx 300Hz to 3000Hz
+        // FFT size 512, sample rate 44100 -> bin size ~86Hz
+        // Vocal bins: ~4 to ~35
+        let vocalEnergy = 0;
+        for (let i = 4; i < 35; i++) {
+            vocalEnergy += dataArray[i];
+        }
+        vocalEnergy /= 31;
+        
+        // Threshold: substantial energy in vocal range
+        if (vocalEnergy > 100) {
+            detectCount++;
+            if (detectCount >= requiredDetects) {
+                const audio = document.getElementById('nativeAudio');
+                if (audio) {
+                    vocalDetectedTime = audio.currentTime;
+                    console.log(`VELIUM: Vocal onset detected at ${vocalDetectedTime.toFixed(2)}s`);
+                    
+                    // If we found vocals earlier than the first lyric (and it's not dots)
+                    // we can potentially trigger the sync earlier
+                    if (parsedLyrics && parsedLyrics.length > 0) {
+                        const firstLyric = parsedLyrics.find(l => l.type !== 'dots');
+                        if (firstLyric && Math.abs(vocalDetectedTime - firstLyric.time) < 3) {
+                             // Tighten the sync if detection is close to expected time
+                             console.log("VELIUM: Auto-aligning lyrics to detected onset");
+                        }
+                    }
+                }
+            }
+        } else {
+            detectCount = 0;
+        }
+        
+        if (!vocalDetectedTime) requestAnimationFrame(check);
+    };
+    
+    requestAnimationFrame(check);
+}
+
 function loadAudioPlayer(url) {
     activeSource = 'audio';
     if (player && typeof player.pauseVideo === 'function') player.pauseVideo();
     let audio = document.getElementById('nativeAudio');
     if (!audio) {
         audio = document.createElement('audio'); audio.id = 'nativeAudio';
+        audio.crossOrigin = "anonymous"; // Required for Web Audio API analysis
         document.getElementById('audioElement').appendChild(audio);
+        
+        initAudioAnalysis(audio);
         
         audio.addEventListener('playing', () => { 
             isPlaying = true; 
             updatePlayPauseUI(); 
             startProgressUpdate(); 
             setPlaybackLoading(false);
+            
+            if (audioAnalysisContext && audioAnalysisContext.state === 'suspended') {
+                audioAnalysisContext.resume();
+            }
+            startVocalDetection();
         });
         audio.addEventListener('pause', () => { 
             isPlaying = false; 
@@ -2058,7 +2147,20 @@ function updateLyricsSync(currentTime) {
     if (!parsedLyrics || parsedLyrics.length === 0) return;
     
     // Adjusted lead-in for tight sync
-    const adjustedTime = currentTime + 0.35;
+    let adjustedTime = currentTime + 0.35;
+    
+    // Auto-calibration: If we've detected vocals, and the first lyric is close, 
+    // we can use the detection to improve accuracy
+    if (vocalDetectedTime && parsedLyrics.length > 0) {
+        const firstLyric = parsedLyrics.find(l => l.type !== 'dots');
+        if (firstLyric && Math.abs(vocalDetectedTime - firstLyric.time) < 2.5) {
+            const drift = vocalDetectedTime - firstLyric.time;
+            // Apply a small correction if we detected vocals significantly before/after expected
+            if (Math.abs(drift) > 0.1) {
+                adjustedTime -= (drift * 0.5); // Smoothly apply correction
+            }
+        }
+    }
     
     let activeIndex = -1;
     for (let i = 0; i < parsedLyrics.length; i++) {
