@@ -873,8 +873,21 @@ let searchMode = 'songs';
 
 window.setSearchMode = function(mode) {
     searchMode = mode;
-    document.getElementById('searchModeSongs').classList.toggle('active', mode === 'songs');
-    document.getElementById('searchModeArtists').classList.toggle('active', mode === 'artists');
+    const songsBtn = document.getElementById('searchModeSongs');
+    const artistsBtn = document.getElementById('searchModeArtists');
+    
+    if (songsBtn) {
+        songsBtn.classList.toggle('active', mode === 'songs');
+        songsBtn.style.background = mode === 'songs' ? 'var(--text-main)' : 'var(--bg-highlight)';
+        songsBtn.style.color = mode === 'songs' ? 'var(--bg-base)' : 'var(--text-main)';
+    }
+    
+    if (artistsBtn) {
+        artistsBtn.classList.toggle('active', mode === 'artists');
+        artistsBtn.style.background = mode === 'artists' ? 'var(--text-main)' : 'var(--bg-highlight)';
+        artistsBtn.style.color = mode === 'artists' ? 'var(--bg-base)' : 'var(--text-main)';
+    }
+
     if (searchState.query) handleSearch(searchState.query);
 };
 
@@ -918,19 +931,12 @@ async function handleSearch(query, append = false, forcedOffset = null) {
         if (searchCache.has(cacheKey)) {
             data = searchCache.get(cacheKey);
         } else {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 4500);
             try {
-                const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`, {
-                    signal: controller.signal
-                });
+                const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`);
                 data = await response.json();
                 searchCache.set(cacheKey, data);
             } catch (err) {
-                if (err.name === 'AbortError') throw new Error("Search timed out. Try again.");
                 throw err;
-            } finally {
-                clearTimeout(timeout);
             }
         }
         
