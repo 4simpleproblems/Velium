@@ -359,21 +359,21 @@
     .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; }
     .btn-flat { background: none; border: none; color: var(--text-main); font-weight: 700; cursor: pointer; padding: 8px 16px; }
     .btn-flat.primary { background-color: var(--text-main); color: #000; border-radius: 24px; padding: 12px 32px; }
-    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; transition: opacity 0.5s; padding: 40px; font-family: 'Manrope', sans-serif; }
+    .fullscreen-overlay { position: fixed; inset: 0; background: var(--bg-base); z-index: 100000; display: none; flex-direction: column; transition: opacity 0.5s; padding: 60px; font-family: 'Manrope', sans-serif; overflow: visible; }
     .fs-background { 
       position: absolute; 
-      inset: -15% !important; 
+      inset: -20% !important; 
       opacity: 0.7; 
-      filter: blur(80px) saturate(1.8); 
+      filter: blur(100px) saturate(1.8); 
       z-index: -2; 
       transition: background-image 1.5s ease-in-out;
       background-size: cover;
       background-position: center;
-      width: 130% !important;
-      height: 130% !important;
+      width: 140% !important;
+      height: 140% !important;
     }
-    .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; position: relative; z-index: 10; }
-    .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 100px; transition: all 0.5s ease; }
+    .fs-top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; position: relative; z-index: 10; overflow: visible; }
+    .fs-main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 120px; transition: all 0.5s ease; overflow: visible; }
     .fs-main.no-lyrics { flex-direction: column; gap: 40px; }
     .fs-main.no-lyrics .fs-lyrics-container { display: none; }
     .fs-main.no-lyrics .fs-art-container { width: 500px; height: 500px; }
@@ -398,12 +398,12 @@
     
     .track-heart-btn { background: none; border: none; color: var(--text-subdued); cursor: pointer; opacity: 0; transition: opacity 0.2s, color 0.2s; font-size: 14px; }
     .track-row:hover .track-heart-btn { opacity: 1; }
-    .track-heart-btn.active { color: #ef4444; opacity: 1 !important; }
+    .track-heart-btn.active { color: #ef4444; }
 
-    .fs-controls-container { width: 100%; max-width: 800px; margin: 20px auto 40px auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 10; }
-    .fs-meta { text-align: left; margin-bottom: 10px; }
-    .fs-meta .np-title { font-size: 32px; font-weight: 800; }
-    .fs-meta .np-artist { font-size: 18px; color: rgba(255,255,255,0.6); }
+    .fs-controls-container { width: 100%; max-width: 800px; margin: 20px auto 40px auto; display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 10; overflow: visible; }
+    .fs-meta { text-align: left; margin-bottom: 10px; padding: 20px; margin: -20px; margin-bottom: -10px; overflow: visible; }
+    .fs-meta .np-title { font-size: 32px; font-weight: 800; line-height: 1.4; }
+    .fs-meta .np-artist { font-size: 18px; color: rgba(255,255,255,0.6); line-height: 1.4; }
     
     /* Bright Background Adaptivity */
     #fsPlayer.bright-bg .np-title, 

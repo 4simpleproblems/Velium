@@ -1537,6 +1537,7 @@ function renderLibrary() {
 }
 async function loadPlaylistView(playlistId) {
     const pl = playlists.find(p => p.id === playlistId); if (!pl) return;
+    artistSearchState.name = ''; // Clear artist search state when entering playlist view
     switchView('dynamic'); const container = document.getElementById('dynamicView');
     const playlistColor = pl.color || '#4f46e5';
     container.innerHTML = `
