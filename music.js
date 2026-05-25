@@ -1169,7 +1169,7 @@ async function playTrack(index) {
     document.getElementById('artworkPlaceholder').classList.add('hidden');
     
     updateLikeButtonStatus();
-    if (document.getElementById('fsPlayer').style.display === 'flex') updateFullscreenUI();
+    if (document.getElementById('fsPlayer').classList.contains('active')) updateFullscreenUI();
     
     // Background fetch lyrics
     fetchLyrics();
@@ -1178,6 +1178,10 @@ async function playTrack(index) {
     document.getElementById('progressBarFill').style.width = '0%';
     document.getElementById('currentTimeLabel').textContent = '0:00';
     document.getElementById('durationLabel').textContent = '0:00';
+    
+    const fsBar = document.getElementById('fsProgressBarFill'); if (fsBar) fsBar.style.width = '0%';
+    const fsCurrent = document.getElementById('fsCurrentTime'); if (fsCurrent) fsCurrent.textContent = '0:00';
+    const fsDuration = document.getElementById('fsDuration'); if (fsDuration) fsDuration.textContent = '0:00';
     
     let preloaded = null;
     const currentUid = getTrackUid(currentTrack);
@@ -1468,7 +1472,7 @@ function updatePlayPauseUI() {
     const btn = document.getElementById('playPauseButton');
     if (btn) btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:2px;"></i>';
     const fsBtn = document.getElementById('fsPlayPause');
-    if (fsBtn) fsBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:4px;"></i>';
+    if (fsBtn) fsBtn.innerHTML = isPlaying ? '<i class="fas fa-pause text-4xl lg:text-6xl text-black"></i>' : '<i class="fas fa-play text-4xl lg:text-6xl ml-1 text-black"></i>';
     
     document.querySelectorAll('.track-row').forEach(row => {
         if (row.classList.contains('is-playing')) {
