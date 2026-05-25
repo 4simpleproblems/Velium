@@ -77,12 +77,11 @@ self.addEventListener('fetch', event => {
             }
 
             if (shouldRoute) {
-                // Optimization: If it's an image or audio request, bypass UV's heavy processing
-                // and fetch it directly through the Bare client for maximum speed.
+                // Optimization: For music player needs (audio, images, text/json), 
+                // we prioritize direct Bare fetching to bypass UV's DOM-heavy processing.
                 
                 let unroutedUrl = "";
                 try {
-                    // Manual XOR decode to be absolutely sure we get the original URL
                     if (targetEvent.request.url.includes('hvtrs8')) {
                         const encodedPart = targetEvent.request.url.split('hvtrs8')[1];
                         unroutedUrl = xor.decode('hvtrs8' + encodedPart);
@@ -90,54 +89,51 @@ self.addEventListener('fetch', event => {
                         unroutedUrl = uv.unroute(targetEvent);
                     }
                 } catch (e) {
-                    // Fallback to ultraviolet.sourceUrl if available
                     try {
                         const ultraviolet = new self.Ultraviolet(__uv$config);
                         unroutedUrl = ultraviolet.sourceUrl(targetEvent.request.url);
                     } catch (e2) {}
                 }
 
-                const isMedia = targetEvent.request.destination === 'image' || 
-                                targetEvent.request.destination === 'audio' ||
-                                (unroutedUrl && (unroutedUrl.includes('googleusercontent.com') || unroutedUrl.includes('ggpht.com') || unroutedUrl.includes('saavncdn.com') || unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg)(\?|$)/i)));
+                // If we have a valid unrouted URL, and it's something we need (media or API data)
+                if (unroutedUrl) {
+                    const isMedia = targetEvent.request.destination === 'image' || 
+                                    targetEvent.request.destination === 'audio' ||
+                                    unroutedUrl.match(/\.(mp3|wav|ogg|m4a|png|jpg|jpeg|webp|gif|svg|json)(\?|$)/i) ||
+                                    unroutedUrl.includes('googleusercontent.com') ||
+                                    unroutedUrl.includes('saavncdn.com');
 
-                if (isMedia && unroutedUrl) {
-                    try {
-                        const headers = {};
-                        for (const [k, v] of targetEvent.request.headers.entries()) {
-                            headers[k] = v;
-                        }
-                        
-                        // Add some basic headers if missing for specific domains
-                        if (unroutedUrl.includes("soundcloud.com") || unroutedUrl.includes("sndcdn.com")) {
-                            headers["origin"] = "https://soundcloud.com";
-                            headers["referer"] = "https://soundcloud.com/";
-                        }
-
-                        let response;
+                    if (isMedia) {
                         try {
-                            response = await bareClient.fetch(unroutedUrl, {
+                            const headers = {};
+                            for (const [k, v] of targetEvent.request.headers.entries()) {
+                                headers[k] = v;
+                            }
+                            
+                            // Domain-specific speed hacks/headers
+                            if (unroutedUrl.includes("soundcloud.com") || unroutedUrl.includes("sndcdn.com")) {
+                                headers["origin"] = "https://soundcloud.com";
+                                headers["referer"] = "https://soundcloud.com/";
+                            }
+
+                            // Use Bare client directly - much faster for media than full UV routing
+                            let response = await bareClient.fetch(unroutedUrl, {
                                 headers,
                                 method: targetEvent.request.method,
                                 body: targetEvent.request.method === 'GET' || targetEvent.request.method === 'HEAD' ? null : await targetEvent.request.clone().arrayBuffer(),
                                 redirect: 'follow'
                             });
-                        } catch (bareError) {
-                            console.warn("Bare fetch threw error, falling back to UV:", bareError);
-                            return await uv.fetch(targetEvent);
+                            
+                            if (response.ok || response.status === 304 || response.status === 206) {
+                                return response;
+                            }
+                        } catch (mediaError) {
+                            console.warn("VELIUM SW: Media direct fetch failed, falling back", unroutedUrl);
                         }
-                        
-                        if (!response.ok && response.status !== 304) {
-                            console.warn(`Bare fetch failed with status ${response.status}, falling back to UV`);
-                            return await uv.fetch(targetEvent);
-                        }
-                        
-                        return response;
-                    } catch (e) {
-                        console.warn("Media direct fetch failed, falling back to UV:", e);
                     }
                 }
 
+                // Fallback to standard UV fetch for everything else or if direct failed
                 return await uv.fetch(targetEvent);
             }
             return await fetch(event.request);

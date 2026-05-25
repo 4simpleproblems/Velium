@@ -11,7 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z'/%3E%3C/svg%3E">
   <link rel="preload" href="/v-proxy/uv.bundle.js" as="script">
   <link rel="preload" href="/baremux/index.js" as="script">
-  <link rel="preload" href="/baremux/worker.js" as="worker">
+  <link rel="preload" href="/baremux/worker.js" as="script">
   <script src="/v-proxy/uv.bundle.js"></script>
   <script>
     const basePath = "/v-proxy/";
@@ -50,6 +50,9 @@
             const signalReady = () => {
                 const msg = { type: 'baremuxready', path: workerPath };
                 bc.postMessage(msg);
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage(msg);
+                }
                 navigator.serviceWorker.getRegistrations().then(registrations => {
                     registrations.forEach(reg => {
                         const sw = reg.active || reg.waiting || reg.installing;
@@ -58,6 +61,8 @@
                 });
             };
             signalReady();
+            setTimeout(signalReady, 500);
+            setTimeout(signalReady, 2000);
             console.log("VELIUM: BareMux Ready Signal Sent");
         } catch (e) {
             console.error("BareMux Init Failed", e);
@@ -561,6 +566,10 @@
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass" style="color: var(--text-subdued); font-size: 16px;"></i>
           <input type="text" id="searchInput" placeholder="Search for songs, artists, or albums">
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+          <button class="btn-flat active" id="searchModeSongs" onclick="setSearchMode('songs')" style="border-radius: 20px; padding: 6px 20px;">Songs</button>
+          <button class="btn-flat" id="searchModeArtists" onclick="setSearchMode('artists')" style="border-radius: 20px; padding: 6px 20px;">Artists</button>
         </div>
       </div>
       <div id="searchResults" class="hidden">

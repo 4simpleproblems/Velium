@@ -788,6 +788,19 @@ async function loadArtistView(artistName, append = false) {
         if (!append && artistTracks.length === 0 && rawTracks.length > 0) {
             artistTracks = rawTracks.slice(0, 20);
         }
+
+        // Deduplication Logic
+        const seenUids = new Set();
+        if (append) {
+            currentDynamicPlaylist.forEach(t => seenUids.add(getTrackUid(t)));
+        }
+        artistTracks = artistTracks.filter(t => {
+            const uid = getTrackUid(t);
+            if (seenUids.has(uid)) return false;
+            seenUids.add(uid);
+            return true;
+        });
+
         if (rawTracks.length < artistSearchState.limit) {
             artistSearchState.hasMore = false;
         }
@@ -856,6 +869,15 @@ async function loadPopularTracks() {
     return null;
 }
 let searchState = { query: '', tracksOffset: 0, loading: false, hasMoreTracks: true, limit: 24 };
+let searchMode = 'songs';
+
+window.setSearchMode = function(mode) {
+    searchMode = mode;
+    document.getElementById('searchModeSongs').classList.toggle('active', mode === 'songs');
+    document.getElementById('searchModeArtists').classList.toggle('active', mode === 'artists');
+    if (searchState.query) handleSearch(searchState.query);
+};
+
 async function handleSearch(query, append = false, forcedOffset = null) {
     const resultsDiv = document.getElementById('searchResults');
     const categoriesDiv = document.getElementById('browseCategories');
@@ -891,25 +913,56 @@ async function handleSearch(query, append = false, forcedOffset = null) {
         tracksGrid.innerHTML = '<div class="col-span-full py-20 flex justify-center"><i class="fas fa-circle-notch fa-spin text-3xl text-accent-indigo"></i></div>';
     }
     try {
-        const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`);
-        const data = await response.json();
-        const newTracks = (data.tracks || []).filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist');
-        currentSearchResults.push(...newTracks);
-        if (!append && tracksGrid) tracksGrid.innerHTML = '';
-        if (tracksGrid && newTracks.length > 0) {
-            const filteredTracks = newTracks.filter(track => {
-                const trackUid = getTrackUid(track);
-                return !Array.from(tracksGrid.querySelectorAll('.track-card')).some(card => card.dataset.uid === trackUid);
-            });
-            renderTrackGrid(filteredTracks, tracksGrid, currentSearchResults);
-            observeImages(tracksGrid);
-        } else if (!append && tracksGrid) {
-            tracksGrid.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500">No tracks found for this query.</div>';
+        const cacheKey = `${query}_${searchState.tracksOffset}_${searchState.limit}_${searchMode}`;
+        let data;
+        if (searchCache.has(cacheKey)) {
+            data = searchCache.get(cacheKey);
+        } else {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4500);
+            try {
+                const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`, {
+                    signal: controller.signal
+                });
+                data = await response.json();
+                searchCache.set(cacheKey, data);
+            } catch (err) {
+                if (err.name === 'AbortError') throw new Error("Search timed out. Try again.");
+                throw err;
+            } finally {
+                clearTimeout(timeout);
+            }
         }
-        searchState.tracksOffset += newTracks.length;
-        searchState.hasMoreTracks = newTracks.length === searchState.limit && newTracks.length > 0;
+        
+        if (searchMode === 'artists') {
+            const artists = data.artists || [];
+            if (!append && tracksGrid) tracksGrid.innerHTML = '';
+            if (artists.length > 0) {
+                renderArtistGrid(artists, tracksGrid);
+            } else if (!append) {
+                tracksGrid.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500">No artists found for this query.</div>';
+            }
+            searchState.hasMoreTracks = false;
+        } else {
+            const newTracks = (data.tracks || []).filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist');
+            currentSearchResults.push(...newTracks);
+            if (!append && tracksGrid) tracksGrid.innerHTML = '';
+            if (tracksGrid && newTracks.length > 0) {
+                const filteredTracks = newTracks.filter(track => {
+                    const trackUid = getTrackUid(track);
+                    return !Array.from(tracksGrid.querySelectorAll('.track-card')).some(card => card.dataset.uid === trackUid);
+                });
+                renderTrackGrid(filteredTracks, tracksGrid, currentSearchResults);
+                observeImages(tracksGrid);
+            } else if (!append && tracksGrid) {
+                tracksGrid.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500">No tracks found for this query.</div>';
+            }
+            searchState.tracksOffset += newTracks.length;
+            searchState.hasMoreTracks = newTracks.length === searchState.limit && newTracks.length > 0;
+        }
+
         if (pagination) {
-            if (newTracks.length > 0 || searchState.tracksOffset > 0) {
+            if (searchMode === 'songs' && (searchState.tracksOffset > 0 || (data.tracks && data.tracks.length > 0))) {
                 pagination.classList.remove('hidden');
                 pagination.style.display = 'flex';
                 const currentPage = Math.ceil(searchState.tracksOffset / searchState.limit) || 1;
@@ -935,6 +988,48 @@ async function handleSearch(query, append = false, forcedOffset = null) {
         searchState.loading = false;
         if (loader) loader.classList.add('hidden');
     }
+}
+
+function renderArtistGrid(artists, container) {
+    artists.forEach(artist => {
+        const card = document.createElement('div');
+        card.className = 'track-card';
+        const artworkUrl = getProxyUrl(artist.artwork_url);
+        card.innerHTML = `
+            <div style="position: relative; overflow: hidden; margin-bottom: 16px; border-radius: 50%;">
+                <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" style="aspect-ratio: 1/1; object-fit: cover;">
+            </div>
+            <div class="card-title text-center">${escapeHtml(artist.name)}</div>
+            <div class="card-subtitle text-center">Artist</div>
+        `;
+        card.onclick = () => loadArtistView(artist.name);
+        container.appendChild(card);
+    });
+    observeImages(container);
+}
+
+function formatArtistLinks(artistString) {
+    if (!artistString) return '';
+    if (typeof artistString !== 'string') return escapeHtml(String(artistString));
+    const parts = artistString.split(/[,&]|\sfeat\.|\sft\./i);
+    const result = [];
+    let currentIdx = 0;
+    parts.forEach((part, i) => {
+        const trimmed = part.trim();
+        if (!trimmed) return;
+        const partIdx = artistString.indexOf(trimmed, currentIdx);
+        if (partIdx > currentIdx) result.push(document.createTextNode(artistString.substring(currentIdx, partIdx)));
+        const link = document.createElement('span');
+        link.className = 'artist-link hover:underline cursor-pointer';
+        link.textContent = trimmed;
+        link.onclick = (e) => { e.stopPropagation(); loadArtistView(trimmed); };
+        result.push(link);
+        currentIdx = partIdx + trimmed.length;
+    });
+    if (currentIdx < artistString.length) result.push(document.createTextNode(artistString.substring(currentIdx)));
+    const wrapper = document.createElement('div');
+    result.forEach(node => wrapper.appendChild(node));
+    return wrapper.innerHTML;
 }
 async function searchNextPage() {
     if (searchState.loading || !searchState.hasMoreTracks) return;
@@ -972,7 +1067,7 @@ function renderTrackGrid(tracks, container, parentList = null) {
                 `}
             </div>
             <div class="card-title">${escapeHtml(track.title)}</div>
-            <div class="card-subtitle" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</div>
+            <div class="card-subtitle">${formatArtistLinks(track.artist_name)}</div>
         `;
         
         const plusBtn = card.querySelector('.card-plus-btn');
@@ -1124,7 +1219,7 @@ function createTrackRow(track, index, trackList, hideEllipsis = false, playlistI
             </div>
             <div class="track-name-stack">
                 <span class="track-name">${escapeHtml(track.title)}</span>
-                <span class="np-artist" onclick="event.stopPropagation(); loadArtistView('${escapeHtml(track.artist_name || '').replace(/'/g, "\\'")}')">${escapeHtml(track.artist_name)}</span>
+                <span class="np-artist">${formatArtistLinks(track.artist_name)}</span>
             </div>
         </div>
         <div class="track-album">${escapeHtml(track.album_name || track.album || '')}</div>
