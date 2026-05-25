@@ -845,20 +845,142 @@ function setGreeting() {
 async function loadPopularTracks() {
     const grid = document.getElementById('popularTracks');
     if (!grid) return null;
-    try {
-        const query = "Travis Scott 2025";
-        const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&limit=24`);
-        const data = await response.json();
-        if (data.tracks) {
-            const filteredTracks = data.tracks.filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist').slice(0, 14);
-            renderTrackGrid(filteredTracks, grid);
-            observeImages(grid);
-            return filteredTracks;
-        }
-    } catch (e) { console.error('Failed to load popular tracks', e); }
-    return null;
+    
+    // Hardcoded 2025 Popular Tracks for instant loading
+    const popularTracks = [
+      {
+        "id": "saavn-PWZYkmDe",
+        "title": "4X4",
+        "artist_name": "Travis Scott",
+        "artwork_url": "https://c.saavncdn.com/868/4X4-English-2025-20250124053125-500x500.jpg",
+        "duration": 191000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/868/bbf6113c828ef52e3f815c96a66c497c_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-LMkbme5d",
+        "title": "Open Arms",
+        "artist_name": "SZA",
+        "artwork_url": "https://c.saavncdn.com/276/SOS-Deluxe-LANA-English-2025-20250207233714-500x500.jpg",
+        "duration": 239000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/276/5d818354df03af738ccb50f7fc4a4f0c_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-4tzoklD-",
+        "title": "Reflections Laughing",
+        "artist_name": "The Weeknd",
+        "artwork_url": "https://c.saavncdn.com/627/Hurry-Up-Tomorrow-English-2025-20260430023429-500x500.jpg",
+        "duration": 291000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/627/88af2418a7f2b2779992f3bb03f6e450_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-p-jZh6lV",
+        "title": "Stuff",
+        "artist_name": "LiL Baby",
+        "artwork_url": "https://c.saavncdn.com/152/WHAM-Extended-Version-English-2025-20250110063452-500x500.jpg",
+        "duration": 181000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/152/68dad7e620ab66ea53a2edbfe6e4a9b1_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-koH29qMF",
+        "title": "CRUSH",
+        "artist_name": "Playboi Carti",
+        "artwork_url": "https://c.saavncdn.com/836/MUSIC-English-2025-20251015040652-500x500.jpg",
+        "duration": 173000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/836/935333ad65b84b877da2805e4948c53b_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-z2w9ouKj",
+        "title": "Tsunami",
+        "artist_name": "DJ Snake",
+        "artwork_url": "https://c.saavncdn.com/538/Nomad-English-2025-20251107063609-500x500.jpg",
+        "duration": 201000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/538/1c34662e0c40e171a160a820325dc8eb_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-WxEuUmCj",
+        "title": "WAKE UP F1LTHY",
+        "artist_name": "Playboi Carti",
+        "artwork_url": "https://c.saavncdn.com/836/MUSIC-English-2025-20251015040652-500x500.jpg",
+        "duration": 169000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/836/2d3c0931a62d891d0a52b321874a0246_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-9Q44XEEC",
+        "title": "TaTaTa (feat. Travis Scott)",
+        "artist_name": "Burna Boy",
+        "artwork_url": "https://c.saavncdn.com/560/No-Sign-of-Weakness-English-2025-20250723220732-500x500.jpg",
+        "duration": 150000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/560/127abe602dcc059cf28aeb9daf11507f_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-8GOygsMb",
+        "title": "BACKR00MS",
+        "artist_name": "Playboi Carti",
+        "artwork_url": "https://c.saavncdn.com/368/MUSIC-SORRY-4-DA-WAIT-English-2025-20251015040652-500x500.jpg",
+        "duration": 160000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/368/6f512143bcfaab53a9d0a526f75e4d36_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-Grazfs_k",
+        "title": "SAY MY GRACE",
+        "artist_name": "Offset",
+        "artwork_url": "https://c.saavncdn.com/474/pre-match-hype-up-English-2025-20260128005108-500x500.jpg",
+        "duration": 173000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/474/c7ee9c12a26a681331b22293943b86eb_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-koH29qMF",
+        "title": "CRUSH",
+        "artist_name": "Playboi Carti",
+        "artwork_url": "https://c.saavncdn.com/836/MUSIC-English-2025-20251015040652-500x500.jpg",
+        "duration": 173000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/836/935333ad65b84b877da2805e4948c53b_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-z2w9ouKj",
+        "title": "Tsunami",
+        "artist_name": "DJ Snake",
+        "artwork_url": "https://c.saavncdn.com/538/Nomad-English-2025-20251107063609-500x500.jpg",
+        "duration": 201000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/538/1c34662e0c40e171a160a820325dc8eb_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-WxEuUmCj",
+        "title": "WAKE UP F1LTHY",
+        "artist_name": "Playboi Carti",
+        "artwork_url": "https://c.saavncdn.com/836/MUSIC-English-2025-20251015040652-500x500.jpg",
+        "duration": 169000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/836/2d3c0931a62d891d0a52b321874a0246_320.mp4"}],
+        "source": "Saavn"
+      },
+      {
+        "id": "saavn-9Q44XEEC",
+        "title": "TaTaTa (feat. Travis Scott)",
+        "artist_name": "Burna Boy",
+        "artwork_url": "https://c.saavncdn.com/560/No-Sign-of-Weakness-English-2025-20250723220732-500x500.jpg",
+        "duration": 150000,
+        "downloadUrl": [{"quality": "320kbps", "link": "https://aac.saavncdn.com/560/127abe602dcc059cf28aeb9daf11507f_320.mp4"}],
+        "source": "Saavn"
+      }
+    ];
+
+    renderTrackGrid(popularTracks, grid);
+    observeImages(grid);
+    return popularTracks;
 }
-let searchState = { query: '', tracksOffset: 0, loading: false, hasMoreTracks: true, limit: 24 };
+let searchState = { query: '', tracksOffset: 0, loading: false, hasMoreTracks: true, limit: 25 };
 async function handleSearch(query, append = false, forcedOffset = null) {
     const resultsDiv = document.getElementById('searchResults');
     const categoriesDiv = document.getElementById('browseCategories');
@@ -899,9 +1021,27 @@ async function handleSearch(query, append = false, forcedOffset = null) {
         if (searchCache.has(cacheKey)) {
             data = searchCache.get(cacheKey);
         } else {
-            const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`);
-            data = await response.json();
-            searchCache.set(cacheKey, data);
+            // Optimization: 6.5s hard timeout for search requests
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6500);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}&offset=${searchState.tracksOffset}&limit=${searchState.limit}`, {
+                    signal: controller.signal
+                });
+                data = await response.json();
+                searchCache.set(cacheKey, data);
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.warn("VELIUM: Search request timed out at 6.5s");
+                    // If we have some results in cache from previous partial success or similar, we could use them
+                    // but usually we just fail gracefully
+                    throw new Error("Search timed out. Try again.");
+                }
+                throw err;
+            } finally {
+                clearTimeout(timeout);
+            }
         }
         const newTracks = (data.tracks || []).filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist');
         currentSearchResults.push(...newTracks);
