@@ -475,7 +475,7 @@ function setupEventListeners() {
     const savePlBtn = document.getElementById('savePlaylistBtn');
     if (savePlBtn) {
         savePlBtn.addEventListener('click', () => {
-            createPlaylist(document.getElementById('playlistNameInput').value.trim(), document.getElementById('playlistDescInput').value.trim());
+            createPlaylist(document.getElementById('playlistNameInput').value.trim(), document.getElementById('playlistDescInput').value.trim(), '', document.getElementById('createPlaylistColor').value);
             hideCreatePlaylistModal();
         });
     }
@@ -684,7 +684,11 @@ async function loadArtistView(artistName, append = false) {
         const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(artistName)}&limit=${artistSearchState.limit}&offset=${artistSearchState.offset}`);
         const data = await response.json();
         const rawTracks = (data.tracks || []).filter(t => (t.artist_name || t.artist || '').trim() !== 'YT Music Artist');
-        let artistTracks = rawTracks.filter(t => (t.artist_name || '').toLowerCase() === artistName.toLowerCase() || (t.artist || '').toLowerCase() === artistName.toLowerCase());
+        let artistTracks = rawTracks.filter(t => {
+            const trackArtist = (t.artist_name || t.artist || '').toLowerCase();
+            const targetArtist = artistName.toLowerCase();
+            return trackArtist.includes(targetArtist) || targetArtist.includes(trackArtist);
+        });
         if (!append && artistTracks.length === 0 && rawTracks.length > 0) {
             artistTracks = rawTracks.slice(0, 20);
         }
@@ -1717,8 +1721,8 @@ async function loadPlaylistView(playlistId) {
 let currentDynamicPlaylist = [];
 function playAllFromDynamic() { if (currentDynamicPlaylist.length > 0) { playlist = currentDynamicPlaylist; originalPlaylist = [...currentDynamicPlaylist]; preloadedNextTrack = null; playTrack(0); } }
 function playAllFavorites() { if (favorites.length > 0) { playlist = favorites; originalPlaylist = [...favorites]; preloadedNextTrack = null; playTrack(0); } }
-function createPlaylist(name, description = '', cover_url = '') {
-    const newPlaylist = { id: Date.now().toString(), name: name || 'My Playlist', description: description, tracks: [], cover_url: cover_url, createdAt: new Date().toISOString() };
+function createPlaylist(name, description = '', cover_url = '', color = '#4f46e5') {
+    const newPlaylist = { id: Date.now().toString(), name: name || 'My Playlist', description: description, tracks: [], cover_url: cover_url, color: color, createdAt: new Date().toISOString() };
     playlists.push(newPlaylist); saveLibraryData(); renderSidebarPlaylists(); renderLibrary(); return newPlaylist.id;
 }
 function updatePlaylist(playlistId, name, description, cover_url, color) {
@@ -1743,7 +1747,13 @@ function deletePlaylist(playlistId) {
         switchView('home');
     }
 }
-function showCreatePlaylistModal() { document.getElementById('createPlaylistModal').style.display = 'flex'; document.getElementById('playlistNameInput').value = ''; document.getElementById('playlistDescInput').value = ''; }
+function showCreatePlaylistModal() { 
+    document.getElementById('createPlaylistModal').style.display = 'flex'; 
+    document.getElementById('playlistNameInput').value = ''; 
+    document.getElementById('playlistDescInput').value = ''; 
+    document.getElementById('createPlaylistColor').value = '#4f46e5';
+    renderColorPicker('createPlaylistColorPicker', 'createPlaylistColor', '#4f46e5', null);
+}
 function hideCreatePlaylistModal() { document.getElementById('createPlaylistModal').style.display = 'none'; }
 function showEditPlaylistModal(playlistId) {
     const pl = playlists.find(p => p.id === playlistId);
@@ -1771,7 +1781,7 @@ function showEditPlaylistModal(playlistId) {
         removeBtn.classList.remove('show');
     }
     
-    renderColorPicker(pl.color || '#4f46e5', pl.cover_url);
+    renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', pl.color || '#4f46e5', pl.cover_url);
 }
 function hideEditPlaylistModal() { document.getElementById('editPlaylistModal').style.display = 'none'; }
 async function confirmEditPlaylist() {
@@ -1788,12 +1798,15 @@ async function confirmEditPlaylist() {
     }
 }
 
-function renderColorPicker(activeColor, imageUrl) {
-    const container = document.getElementById('editPlaylistColorPicker');
+function renderColorPicker(containerId, hiddenInputId, activeColor, imageUrl, customColor = null) {
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     
     const defaultColors = ['#4f46e5', '#ef4444', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+    if (customColor && !defaultColors.includes(customColor)) {
+        defaultColors.unshift(customColor);
+    }
     
     const render = (allColors) => {
         container.innerHTML = '';
@@ -1803,12 +1816,39 @@ function renderColorPicker(activeColor, imageUrl) {
             opt.className = 'color-option' + (color.toLowerCase() === activeColor.toLowerCase() ? ' active' : '');
             opt.style.backgroundColor = color;
             opt.onclick = () => {
-                document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+                container.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
                 opt.classList.add('active');
-                document.getElementById('editPlaylistColor').value = color;
+                document.getElementById(hiddenInputId).value = color;
             };
             container.appendChild(opt);
         });
+
+        // Add custom color option element
+        const customOpt = document.createElement('div');
+        customOpt.className = 'color-option custom-picker-btn';
+        customOpt.style.position = 'relative';
+        customOpt.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)';
+        customOpt.style.display = 'flex';
+        customOpt.style.alignItems = 'center';
+        customOpt.style.justifyContent = 'center';
+        customOpt.innerHTML = '<i class="fa-solid fa-plus" style="font-size: 12px; color: #fff; pointer-events: none;"></i>';
+        
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.style.position = 'absolute';
+        colorInput.style.opacity = '0';
+        colorInput.style.width = '100%';
+        colorInput.style.height = '100%';
+        colorInput.style.cursor = 'pointer';
+        colorInput.value = activeColor.startsWith('#') && activeColor.length === 7 ? activeColor : '#ffffff';
+        
+        colorInput.oninput = (e) => {
+            const customVal = e.target.value;
+            document.getElementById(hiddenInputId).value = customVal;
+            renderColorPicker(containerId, hiddenInputId, customVal, imageUrl, customVal);
+        };
+        customOpt.appendChild(colorInput);
+        container.appendChild(customOpt);
     };
 
     if (imageUrl) {
@@ -1852,7 +1892,7 @@ window.removePlaylistArt = function() {
     artPreview.style.display = 'none';
     artPlaceholder.style.display = 'flex';
     removeBtn.classList.remove('show');
-    renderColorPicker(document.getElementById('editPlaylistColor').value, null);
+    renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', document.getElementById('editPlaylistColor').value, null);
 };
 function showAddToPlaylistModal(track) {
     if (!track) track = currentTrack;
@@ -2065,7 +2105,7 @@ function initCropper() {
                 artPreview.style.display = 'block';
                 if (artPlaceholder) artPlaceholder.style.display = 'none';
                 if (removeBtn) removeBtn.classList.add('show');
-                renderColorPicker(document.getElementById('editPlaylistColor').value, base64);
+                renderColorPicker('editPlaylistColorPicker', 'editPlaylistColor', document.getElementById('editPlaylistColor').value, base64);
             }
         }
 

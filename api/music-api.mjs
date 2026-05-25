@@ -40,7 +40,7 @@ function optimizeThumbnailUrl(url) {
   return url;
 }
 
-async function fetchJioSaavn(searchQuery) {
+async function fetchJioSaavn(searchQuery, limitVal) {
   const bases = [
     'https://saavn.me',
     'https://jiosaavn-api-liart.vercel.app',
@@ -48,9 +48,12 @@ async function fetchJioSaavn(searchQuery) {
     'https://nepotuneapi.vercel.app'
   ];
   const urls = [];
+  const reqLimit = limitVal ? parseInt(limitVal) : 40;
+  const countParam = reqLimit > 0 ? reqLimit : 40;
+
   bases.forEach(base => {
-    urls.push(`${base}/api/search/songs?query=${encodeURIComponent(searchQuery)}`);
-    urls.push(`${base}/search/songs?query=${encodeURIComponent(searchQuery)}`);
+    urls.push(`${base}/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${countParam}`);
+    urls.push(`${base}/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${countParam}`);
   });
   const fetchWithTimeout = async (url) => {
     const controller = new AbortController();
@@ -158,7 +161,7 @@ export default async function handler(req, res) {
         fetch(`https://argon.global.ssl.fastly.net/api/search?query=${encodeURIComponent(searchQuery)}&offset=${offset || 0}&limit=${limit || 25}`)
             .then(r => r.ok ? r.json() : { collection: [] })
             .catch(() => ({ collection: [] })),
-        fetchJioSaavn(searchQuery).catch(() => null)
+        fetchJioSaavn(searchQuery, limit).catch(() => null)
       ]);
 
       let tracks = [];
@@ -237,8 +240,35 @@ export default async function handler(req, res) {
               const saavnTracks = songs.map(song => {
                   if (!song) return null;
                   const title = song.name || song.title || 'Unknown Title';
-                  const artist = song.primaryArtists || song.artists?.[0]?.name || song.artist || 'Unknown Artist';
-                  const artistId = song.primaryArtistsId || song.artists?.[0]?.id;
+                  let artist = 'Unknown Artist';
+                  if (typeof song.primaryArtists === 'string' && song.primaryArtists.trim()) {
+                      artist = song.primaryArtists;
+                  } else if (Array.isArray(song.primaryArtists)) {
+                      artist = song.primaryArtists.map(a => typeof a === 'string' ? a : a.name).join(', ') || 'Unknown Artist';
+                  } else if (song.artists) {
+                      if (Array.isArray(song.artists)) {
+                          artist = song.artists.map(a => a.name).join(', ') || 'Unknown Artist';
+                      } else if (song.artists.primary && Array.isArray(song.artists.primary)) {
+                          artist = song.artists.primary.map(a => a.name).join(', ') || 'Unknown Artist';
+                      } else if (song.artists.all && Array.isArray(song.artists.all)) {
+                          artist = song.artists.all.map(a => a.name).join(', ') || 'Unknown Artist';
+                      } else if (song.artists[0] && song.artists[0].name) {
+                          artist = song.artists[0].name;
+                      }
+                  } else if (song.artist) {
+                      artist = song.artist;
+                  }
+
+                  let artistId = null;
+                  if (song.primaryArtistsId) {
+                      artistId = song.primaryArtistsId;
+                  } else if (song.artists) {
+                      if (Array.isArray(song.artists) && song.artists[0]) {
+                          artistId = song.artists[0].id;
+                      } else if (song.artists.primary && Array.isArray(song.artists.primary) && song.artists.primary[0]) {
+                          artistId = song.artists.primary[0].id;
+                      }
+                  }
                   let artwork = '';
                   if (Array.isArray(song.image)) {
                       artwork = song.image[song.image.length - 1]?.link || song.image[song.image.length - 1]?.url || song.image[0]?.link || '';
