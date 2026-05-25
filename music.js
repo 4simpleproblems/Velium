@@ -2812,22 +2812,45 @@ function adjustLyricsFontSize() {
     const fsLyrics = document.querySelector('.fs-lyrics-container');
     if (!fsLyrics) return;
     const lines = fsLyrics.querySelectorAll('.lyric-line');
+    if (lines.length === 0) return;
+
+    const baseFontSize = 32; 
+    const minFontSize = 18;
+    const containerWidth = fsLyrics.clientWidth - 60; // Padding
+
+    // Find the longest line's scrollWidth at base size
+    let maxScrollWidth = 0;
     lines.forEach(line => {
         if (line.classList.contains('dots-line')) return;
-        let fontSize = 28; 
-        line.style.fontSize = fontSize + 'px';
-        line.style.whiteSpace = 'nowrap'; 
         
-        // Use a loop to decrease font size until it fits
-        while (line.scrollWidth > line.clientWidth && fontSize > 14) {
-            fontSize -= 1;
-            line.style.fontSize = fontSize + 'px';
-        }
+        // Disable transition during measurement
+        const originalTransition = line.style.transition;
+        line.style.transition = 'none';
+        line.style.fontSize = baseFontSize + 'px';
+        line.style.whiteSpace = 'nowrap';
         
-        // If still too big, allow wrapping as a last resort
-        if (line.scrollWidth > line.clientWidth) {
+        const sw = line.scrollWidth;
+        if (sw > maxScrollWidth) maxScrollWidth = sw;
+        
+        line.style.transition = originalTransition;
+    });
+
+    let targetFontSize = baseFontSize;
+    if (maxScrollWidth > containerWidth) {
+        targetFontSize = Math.max(minFontSize, Math.floor(baseFontSize * (containerWidth / maxScrollWidth)));
+    }
+
+    // Apply uniform size
+    fsLyrics.style.setProperty('--lyric-font-size', targetFontSize + 'px');
+    lines.forEach(line => {
+        line.style.fontSize = 'var(--lyric-font-size)';
+        
+        // Final overflow check for wrapping
+        if (line.scrollWidth > fsLyrics.clientWidth - 20) {
             line.style.whiteSpace = 'normal';
             line.style.wordBreak = 'break-word';
+        } else {
+            line.style.whiteSpace = 'nowrap';
         }
     });
 }

@@ -639,6 +639,7 @@ window.toggleFullscreenPlayer = function() {
         document.body.style.overflow = 'hidden';
         if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
         updateFullscreenUI();
+        setTimeout(adjustLyricsFontSize, 600); // Wait for transition
     } else {
         fs.style.display = 'none';
         document.body.style.overflow = '';
@@ -2423,26 +2424,48 @@ function adjustLyricsFontSize() {
     const fsLyrics = document.querySelector('.fs-lyrics-container');
     if (!fsLyrics) return;
     const lines = fsLyrics.querySelectorAll('.lyric-line');
+    if (lines.length === 0) return;
+
+    const baseFontSize = 32; 
+    const minFontSize = 18;
+    const containerWidth = fsLyrics.clientWidth - 60; // Padding
+
+    // Find the longest line's scrollWidth at base size
+    let maxScrollWidth = 0;
     lines.forEach(line => {
         if (line.classList.contains('dots-line')) return;
-        let fontSize = 28; 
-        line.style.fontSize = fontSize + 'px';
-        line.style.whiteSpace = 'nowrap'; 
         
-        // Use a loop to decrease font size until it fits
-        while (line.scrollWidth > line.clientWidth && fontSize > 14) {
-            fontSize -= 1;
-            line.style.fontSize = fontSize + 'px';
-        }
+        // Disable transition during measurement
+        const originalTransition = line.style.transition;
+        line.style.transition = 'none';
+        line.style.fontSize = baseFontSize + 'px';
+        line.style.whiteSpace = 'nowrap';
         
-        // If still too big, allow wrapping as a last resort
-        if (line.scrollWidth > line.clientWidth) {
+        const sw = line.scrollWidth;
+        if (sw > maxScrollWidth) maxScrollWidth = sw;
+        
+        line.style.transition = originalTransition;
+    });
+
+    let targetFontSize = baseFontSize;
+    if (maxScrollWidth > containerWidth) {
+        targetFontSize = Math.max(minFontSize, Math.floor(baseFontSize * (containerWidth / maxScrollWidth)));
+    }
+
+    // Apply uniform size
+    fsLyrics.style.setProperty('--lyric-font-size', targetFontSize + 'px');
+    lines.forEach(line => {
+        line.style.fontSize = 'var(--lyric-font-size)';
+        
+        // Final overflow check for wrapping
+        if (line.scrollWidth > fsLyrics.clientWidth - 20) {
             line.style.whiteSpace = 'normal';
             line.style.wordBreak = 'break-word';
+        } else {
+            line.style.whiteSpace = 'nowrap';
         }
     });
 }
-
 window.addEventListener('resize', adjustLyricsFontSize);
 
 async function fetchLyrics() {
@@ -2454,6 +2477,13 @@ async function fetchLyrics() {
     }
 
     const playingWhenStarted = getTrackUid(currentTrack);
+    
+    // Check local cache first
+    if (currentTrack.lyrics) {
+        renderLyricsToUI(currentTrack.lyrics, playingWhenStarted);
+        return;
+    }
+
     const loadingHtml = '<div class="py-10 text-center"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
     if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
@@ -2478,52 +2508,68 @@ async function fetchLyrics() {
         if (response.ok) {
             const data = await response.json();
             lyricsText = data.lyrics;
-        }
-        const fsMain = document.querySelector('.fs-main');
-        if (lyricsText) {
-            if (fsMain) fsMain.classList.remove('no-lyrics');
-            let duration = currentTrack.duration || 0;
-            if (!duration) {
-                if (activeSource === 'audio') {
-                    const audio = document.getElementById('nativeAudio');
-                    if (audio) duration = audio.duration;
-                } else if (player && typeof player.getDuration === 'function') {
-                    duration = player.getDuration();
-                }
+            if (lyricsText && currentTrack && getTrackUid(currentTrack) === playingWhenStarted) {
+                currentTrack.lyrics = lyricsText;
+                saveLibraryData(); // Persist lyrics if song is liked/in playlist
             }
-            parsedLyrics = parseLyrics(lyricsText, duration);
-            const html = parsedLyrics.map(line => {
-                if (line.type === 'dots') {
-                    return `<div class="lyric-line" style="display: flex; justify-content: center; pointer-events: none;">
-                        <div class="lyric-dots">
-                            <div class="lyric-dot"></div>
-                            <div class="lyric-dot"></div>
-                            <div class="lyric-dot"></div>
-                        </div>
-                    </div>`;
-                }
-                if (line.time !== null && line.time !== undefined) {
-                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})">${escapeHtml(line.text)}</div>`;
-                } else {
-                    return `<div class="lyric-line">${escapeHtml(line.text)}</div>`;
-                }
-            }).join('');
-            if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
-            if (fsLyrics) fsLyrics.innerHTML = html;
-        } else {
-            if (fsMain) fsMain.classList.add('no-lyrics');
-            parsedLyrics = [];
-            const html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
-            if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
-            if (fsLyrics) fsLyrics.innerHTML = html;
         }
+        renderLyricsToUI(lyricsText, playingWhenStarted);
     } catch (e) {
-        const fsMain = document.querySelector('.fs-main');
+        renderLyricsToUI(null, playingWhenStarted);
+    }
+}
+
+function renderLyricsToUI(lyricsText, playingWhenStarted) {
+    const panelContent = document.getElementById('panelContent');
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    const fsMain = document.querySelector('.fs-main');
+
+    if (getTrackUid(currentTrack) !== playingWhenStarted) return;
+
+    if (lyricsText) {
+        if (fsMain) fsMain.classList.remove('no-lyrics');
+        let duration = currentTrack.duration || 0;
+        if (!duration) {
+            if (activeSource === 'audio') {
+                const audio = document.getElementById('nativeAudio');
+                if (audio) duration = audio.duration;
+            } else if (player && typeof player.getDuration === 'function') {
+                duration = player.getDuration();
+            }
+        }
+        parsedLyrics = parseLyrics(lyricsText, duration);
+
+        const html = parsedLyrics.map((line, idx) => {
+            if (line.type === 'dots') {
+                return `<div class="lyric-line dots-line" style="display: flex; justify-content: center; pointer-events: none;">
+                    <div class="lyric-dots">
+                        <div class="lyric-dot"></div>
+                        <div class="lyric-dot"></div>
+                        <div class="lyric-dot"></div>
+                    </div>
+                </div>`;
+            }
+            const contextAttr = (line.time !== null) ? `oncontextmenu="calibrateLyrics(event, ${idx})"` : '';
+            const untimedClass = (line.time === null || line.time === undefined) ? 'untimed' : '';
+            let lineHtml = escapeHtml(line.text);
+
+            if (line.time !== null && line.time !== undefined) {
+                return `<div class="lyric-line ${untimedClass}" onclick="seekToLyrics(${line.time})" ${contextAttr}>${lineHtml}</div>`;
+            } else {
+                return `<div class="lyric-line ${untimedClass}" ${contextAttr}>${lineHtml}</div>`;
+            }
+        }).join('');
+        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+        if (fsLyrics) {
+            fsLyrics.innerHTML = html;
+            setTimeout(adjustLyricsFontSize, 50);
+        }
+    } else {
         if (fsMain) fsMain.classList.add('no-lyrics');
         parsedLyrics = [];
-        const errHtml = '<div class="py-10 text-center" style="color: #ef4444;">Lyrics unavailable.</div>';
-        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = errHtml;
-        if (fsLyrics) fsLyrics.innerHTML = errHtml;
+        const html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
+        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+        if (fsLyrics) fsLyrics.innerHTML = html;
     }
 }
 function renderQueue() {
