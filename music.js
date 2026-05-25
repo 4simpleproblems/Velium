@@ -85,10 +85,99 @@ let playlists = [];
 let player = null;
 let progressInterval = null;
 let volume = parseInt(localStorage.getItem('velium_v2_volume')) || 70;
+let settings = JSON.parse(localStorage.getItem('velium_v2_settings')) || {
+    libraryLimit: Infinity,
+    lightMode: false
+};
+
+function saveSettings() {
+    localStorage.setItem('velium_v2_settings', JSON.stringify(settings));
+}
+
+function applySettings() {
+    if (settings.lightMode) {
+        document.body.classList.add('light-mode');
+        const btn = document.getElementById('lightModeToggle');
+        if (btn) btn.textContent = 'On';
+    } else {
+        document.body.classList.remove('light-mode');
+        const btn = document.getElementById('lightModeToggle');
+        if (btn) btn.textContent = 'Off';
+    }
+    
+    // Update limit UI
+    const limits = [50, 100, Infinity];
+    limits.forEach(l => {
+        const btn = document.getElementById(`limit-${l === Infinity ? 'infinite' : l}`);
+        if (btn) btn.classList.toggle('primary', settings.libraryLimit === l);
+    });
+    const customInput = document.getElementById('customLimitInput');
+    if (customInput) {
+        if (!limits.includes(settings.libraryLimit)) {
+            customInput.value = settings.libraryLimit;
+        } else {
+            customInput.value = '';
+        }
+    }
+}
+
+window.showSettingsModal = function() {
+    applySettings();
+    document.getElementById('settingsModal').style.display = 'flex';
+};
+
+window.hideSettingsModal = function() {
+    document.getElementById('settingsModal').style.display = 'none';
+};
+
+window.toggleLightMode = function() {
+    settings.lightMode = !settings.lightMode;
+    saveSettings();
+    applySettings();
+};
+
+window.updateLibraryLimit = function(limit) {
+    settings.libraryLimit = limit || Infinity;
+    saveSettings();
+    applySettings();
+};
+
 let preloadedNextTrack = null;
 let preloadedPrevTrack = null;
 let currentSearchResults = [];
 const searchCache = new Map();
+const pendingSearches = new Map();
+
+async function getYoutubeId(track) {
+    if (!track) return null;
+    if (track.youtube_id || track.videoId) return track.youtube_id || track.videoId;
+    
+    const uid = getTrackUid(track);
+    if (pendingSearches.has(uid)) return pendingSearches.get(uid);
+
+    const promise = (async () => {
+        try {
+            const query = `${track.title} ${track.artist_name} official audio`;
+            const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            if (data.videoId) {
+                track.youtube_id = data.videoId;
+                track.videoId = data.videoId;
+                saveLibraryData();
+                return data.videoId;
+            }
+        } catch (e) {
+            console.error('VELIUM: Search failed', e);
+        } finally {
+            pendingSearches.delete(uid);
+        }
+        return null;
+    })();
+
+    pendingSearches.set(uid, promise);
+    return promise;
+}
+
 const popularArtists = [
     'The Weeknd', 'Drake', 'Post Malone', 'Dua Lipa', 'Ed Sheeran',
     'Ariana Grande', 'Travis Scott', 'Olivia Rodrigo', 'Bad Bunny', 'SZA'
@@ -202,12 +291,15 @@ async function preloadSingleTrack(index, type) {
     const trackUid = getTrackUid(track);
     const cache = type === 'next' ? preloadedNextTrack : preloadedPrevTrack;
     if (cache && cache.uid === trackUid) return;
+
+    // Preload artwork
+    const artworkUrl = track.local_artwork || getProxyUrl(track.artwork_url, '500x500');
+    if (artworkUrl) {
+        const img = new Image();
+        img.src = artworkUrl;
+    }
+
     try {
-        if (track.youtube_id || track.videoId) {
-            const data = { index, uid: trackUid, source: 'youtube', videoId: track.youtube_id || track.videoId };
-            if (type === 'next') preloadedNextTrack = data; else preloadedPrevTrack = data;
-            return;
-        }
         const directUrl = getDownloadUrl(track);
         if (directUrl) {
             const data = { index, uid: trackUid, source: 'audio', url: directUrl };
@@ -224,17 +316,13 @@ async function preloadSingleTrack(index, type) {
             preloadAudio.src = directUrl;
             preloadAudio.load();
         } else {
-            const query = `${track.title} ${track.artist_name}`;
-            const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            if (data.videoId) {
-                track.youtube_id = data.videoId;
-                saveLibraryData();
-                const cacheData = { index, uid: trackUid, source: 'youtube', videoId: data.videoId };
+            const videoId = await getYoutubeId(track);
+            if (videoId) {
+                const cacheData = { index, uid: trackUid, source: 'youtube', videoId: videoId };
                 if (type === 'next') preloadedNextTrack = cacheData; else preloadedPrevTrack = cacheData;
             }
         }
-    } catch (e) { console.warn(`Preload ${type} failed`, e); }
+    } catch (e) { console.warn(`VELIUM: Preload ${type} failed`, e); }
 }
 async function silentPreloadDurations(tracks) {
     if (!tracks || tracks.length === 0) return;
@@ -355,7 +443,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     if (isInitialized) return;
     isInitialized = true;
+    
+    // Pre-initialize YouTube API for faster first-track loading
+    if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        if (firstScriptTag) firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+    
     await loadLibraryData();
+    applySettings();
     setGreeting();
     setupEventListeners();
     loadPopularTracks().then(tracks => {
@@ -543,6 +641,7 @@ window.toggleFullscreenPlayer = function() {
         document.body.style.overflow = 'hidden';
         if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
         updateFullscreenUI();
+        setTimeout(adjustLyricsFontSize, 600); // Wait for transition
     } else {
         fs.classList.remove('active');
         document.body.style.overflow = '';
@@ -1207,17 +1306,14 @@ async function playTrack(index) {
         preloadTracks();
         return;
     }
-    try {
-        const query = `${currentTrack.title} ${currentTrack.artist_name}`;
-        const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-        const data = await response.json();
-        if (data.videoId) {
-            currentTrack.youtube_id = data.videoId;
-            saveLibraryData();
-            loadYouTubePlayer(data.videoId);
-            preloadTracks();
-        }
-    } catch (e) { console.error('Failed to get video ID', e); setPlaybackLoading(false); }
+    
+    const videoId = await getYoutubeId(currentTrack);
+    if (videoId) {
+        loadYouTubePlayer(videoId);
+        preloadTracks();
+    } else {
+        setPlaybackLoading(false);
+    }
 }
 let audioAnalysisContext = null;
 let analyserNode = null;
@@ -1549,6 +1645,7 @@ async function loadLibraryData() {
 }
 async function saveLibraryData() {
     try {
+        enforceLibraryLimit();
         if (window.VeliumDB) await window.VeliumDB.saveLibrary({ likedSongs: favorites, playlists: playlists });
         else {
             localStorage.setItem('velium_v2_favorites', JSON.stringify(favorites));
@@ -1556,14 +1653,41 @@ async function saveLibraryData() {
         }
     } catch (e) { console.error("Error saving library", e); }
 }
+
+function getTotalLibrarySongs() {
+    const allSongs = new Set();
+    favorites.forEach(s => allSongs.add(getTrackUid(s)));
+    playlists.forEach(pl => pl.tracks.forEach(s => allSongs.add(getTrackUid(s))));
+    return allSongs.size;
+}
+
+function enforceLibraryLimit() {
+    if (!settings || settings.libraryLimit === Infinity) return;
+    
+    // We only enforce limit on favorites for now to stay under total unique limit
+    while (getTotalLibrarySongs() > settings.libraryLimit && favorites.length > 0) {
+        favorites.shift();
+    }
+}
+
 function saveToStorage(key, value) { localStorage.setItem(`velium_v2_${key}`, JSON.stringify(value)); }
 window.toggleLikeTrack = async function(track, btnEl) {
     const trackUid = getTrackUid(track);
     const index = favorites.findIndex(t => getTrackUid(t) === trackUid);
     const isLiking = index === -1;
-    
-    const originalFavorites = [...favorites];
-    
+
+    if (isLiking && settings.libraryLimit !== Infinity) {
+        const allSongs = new Set();
+        favorites.forEach(s => allSongs.add(getTrackUid(s)));
+        playlists.forEach(pl => pl.tracks.forEach(s => allSongs.add(getTrackUid(s))));
+        
+        if (!allSongs.has(trackUid) && allSongs.size >= settings.libraryLimit) {
+            showToast(`Library limit (${settings.libraryLimit}) reached. Increase it in settings.`, 'info');
+            return;
+        }
+    }
+
+    const originalFavorites = [...favorites];    
     if (isLiking) {
         favorites.push(track);
     } else {
@@ -1998,6 +2122,18 @@ async function addTrackToPlaylist(track, playlistId) {
             showToast('Already in playlist', 'info');
             hideAddToPlaylistModal();
             return;
+        }
+
+        if (settings.libraryLimit !== Infinity) {
+            const allSongs = new Set();
+            favorites.forEach(s => allSongs.add(getTrackUid(s)));
+            playlists.forEach(pl => pl.tracks.forEach(s => allSongs.add(getTrackUid(s))));
+            
+            if (!allSongs.has(trackUid) && allSongs.size >= settings.libraryLimit) {
+                showToast(`Library limit (${settings.libraryLimit}) reached. Increase it in settings.`, 'info');
+                hideAddToPlaylistModal();
+                return;
+            }
         }
 
         // Deep clone track and ensure critical IDs are preserved
@@ -2435,6 +2571,32 @@ function calibrateLyrics(e, index) {
 }
 window.calibrateLyrics = calibrateLyrics;
 
+function adjustLyricsFontSize() {
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    if (!fsLyrics) return;
+    const lines = fsLyrics.querySelectorAll('.lyric-line');
+    lines.forEach(line => {
+        if (line.classList.contains('dots-line')) return;
+        let fontSize = 28; 
+        line.style.fontSize = fontSize + 'px';
+        line.style.whiteSpace = 'nowrap'; 
+        
+        // Use a loop to decrease font size until it fits
+        while (line.scrollWidth > line.clientWidth && fontSize > 14) {
+            fontSize -= 1;
+            line.style.fontSize = fontSize + 'px';
+        }
+        
+        // If still too big, allow wrapping as a last resort
+        if (line.scrollWidth > line.clientWidth) {
+            line.style.whiteSpace = 'normal';
+            line.style.wordBreak = 'break-word';
+        }
+    });
+}
+
+window.addEventListener('resize', adjustLyricsFontSize);
+
 async function fetchLyrics() {
     const panelContent = document.getElementById('panelContent');
     const fsLyrics = document.querySelector('.fs-lyrics-container');
@@ -2444,28 +2606,21 @@ async function fetchLyrics() {
     }
 
     const playingWhenStarted = getTrackUid(currentTrack);
+    
+    // Check local cache first
+    if (currentTrack.lyrics) {
+        renderLyricsToUI(currentTrack.lyrics, playingWhenStarted);
+        return;
+    }
+
     const loadingHtml = '<div class="py-10 text-center"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
     if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = loadingHtml;
     if (fsLyrics) fsLyrics.innerHTML = loadingHtml;
 
     try {
         let lyricsText = null;
-        let id = currentTrack.youtube_id || currentTrack.videoId;
-        if (!id) {
-            const query = `${currentTrack.title} ${currentTrack.artist_name}`;
-            try {
-                const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-                const searchData = await searchRes.json();
-                if (searchData.videoId) {
-                    id = searchData.videoId;
-                    currentTrack.youtube_id = id;
-                    currentTrack.videoId = id;
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-        if (!id) id = getTrackUid(currentTrack);
+        const id = await getYoutubeId(currentTrack);
+        if (!id) throw new Error('Could not resolve YouTube ID for lyrics');
 
         const trackName = currentTrack.title;
         const artistName = currentTrack.artist_name;
@@ -2482,75 +2637,86 @@ async function fetchLyrics() {
         if (response.ok) {
             const data = await response.json();
             lyricsText = data.lyrics;
-        }
-        const fsMain = document.querySelector('.fs-main');
-        if (lyricsText) {
-            if (fsMain) fsMain.classList.remove('no-lyrics');
-            let duration = currentTrack.duration || 0;
-            if (!duration) {
-                if (activeSource === 'audio') {
-                    const audio = document.getElementById('nativeAudio');
-                    if (audio) duration = audio.duration;
-                } else if (player && typeof player.getDuration === 'function') {
-                    duration = player.getDuration();
-                }
+            if (lyricsText && currentTrack && getTrackUid(currentTrack) === playingWhenStarted) {
+                currentTrack.lyrics = lyricsText;
+                saveLibraryData(); // Persist lyrics if song is liked/in playlist
             }
-            parsedLyrics = parseLyrics(lyricsText, duration);
-
-            // Apply saved calibration
-            const trackId = getTrackUid(currentTrack);
-            const calibrationData = JSON.parse(localStorage.getItem('velium_lyric_calibration') || '{}');
-            const savedOffset = calibrationData[trackId] || 0;
-            if (savedOffset !== 0) {
-                parsedLyrics.forEach(l => {
-                    if (l.time !== null) l.time += savedOffset;
-                    if (l.endTime !== null) l.endTime += savedOffset;
-                });
-            }
-
-            const html = parsedLyrics.map((line, idx) => {
-                if (line.type === 'dots') {
-                    return `<div class="lyric-line" style="display: flex; justify-content: center; pointer-events: none;">
-                        <div class="lyric-dots">
-                            <div class="lyric-dot"></div>
-                            <div class="lyric-dot"></div>
-                            <div class="lyric-dot"></div>
-                        </div>
-                    </div>`;
-                }
-                
-                const contextAttr = (line.time !== null) ? `oncontextmenu="calibrateLyrics(event, ${idx})"` : '';
-                const untimedClass = (line.time === null || line.time === undefined) ? 'untimed' : '';
-                
-                let lineHtml = '';
-                if (line.words) {
-                    lineHtml = line.words.map(w => `<span class="word">${escapeHtml(w.text)}</span>`).join('');
-                } else {
-                    lineHtml = escapeHtml(line.text);
-                }
-
-                if (line.time !== null && line.time !== undefined) {
-                    return `<div class="lyric-line ${untimedClass}" onclick="seekToLyrics(${line.time})" ${contextAttr}>${lineHtml}</div>`;
-                } else {
-                    return `<div class="lyric-line ${untimedClass}" ${contextAttr}>${lineHtml}</div>`;
-                }
-            }).join('');
-            if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
-            if (fsLyrics) fsLyrics.innerHTML = html;
-        } else {
-            if (fsMain) fsMain.classList.add('no-lyrics');
-            parsedLyrics = [];
-            const html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
-            if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
-            if (fsLyrics) fsLyrics.innerHTML = html;
         }
+        renderLyricsToUI(lyricsText, playingWhenStarted);
     } catch (e) {
-        const fsMain = document.querySelector('.fs-main');
+        renderLyricsToUI(null, playingWhenStarted);
+    }
+}
+
+function renderLyricsToUI(lyricsText, playingWhenStarted) {
+    const panelContent = document.getElementById('panelContent');
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    const fsMain = document.querySelector('.fs-main');
+
+    if (getTrackUid(currentTrack) !== playingWhenStarted) return;
+
+    if (lyricsText) {
+        if (fsMain) fsMain.classList.remove('no-lyrics');
+        let duration = currentTrack.duration || 0;
+        if (!duration) {
+            if (activeSource === 'audio') {
+                const audio = document.getElementById('nativeAudio');
+                if (audio) duration = audio.duration;
+            } else if (player && typeof player.getDuration === 'function') {
+                duration = player.getDuration();
+            }
+        }
+        parsedLyrics = parseLyrics(lyricsText, duration);
+
+        // Apply saved calibration
+        const trackId = getTrackUid(currentTrack);
+        const calibrationData = JSON.parse(localStorage.getItem('velium_lyric_calibration') || '{}');
+        const savedOffset = calibrationData[trackId] || 0;
+        if (savedOffset !== 0) {
+            parsedLyrics.forEach(l => {
+                if (l.time !== null) l.time += savedOffset;
+                if (l.endTime !== null) l.endTime += savedOffset;
+            });
+        }
+
+        const html = parsedLyrics.map((line, idx) => {
+            if (line.type === 'dots') {
+                return `<div class="lyric-line dots-line" style="display: flex; justify-content: center; pointer-events: none;">
+                    <div class="lyric-dots">
+                        <div class="lyric-dot"></div>
+                        <div class="lyric-dot"></div>
+                        <div class="lyric-dot"></div>
+                    </div>
+                </div>`;
+            }
+            
+            const contextAttr = (line.time !== null) ? `oncontextmenu="calibrateLyrics(event, ${idx})"` : '';
+            const untimedClass = (line.time === null || line.time === undefined) ? 'untimed' : '';
+            
+            let lineHtml = '';
+            if (line.words) {
+                lineHtml = line.words.map(w => `<span class="word">${escapeHtml(w.text)}</span>`).join('');
+            } else {
+                lineHtml = escapeHtml(line.text);
+            }
+
+            if (line.time !== null && line.time !== undefined) {
+                return `<div class="lyric-line ${untimedClass}" onclick="seekToLyrics(${line.time})" ${contextAttr}>${lineHtml}</div>`;
+            } else {
+                return `<div class="lyric-line ${untimedClass}" ${contextAttr}>${lineHtml}</div>`;
+            }
+        }).join('');
+        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+        if (fsLyrics) {
+            fsLyrics.innerHTML = html;
+            setTimeout(adjustLyricsFontSize, 50);
+        }
+    } else {
         if (fsMain) fsMain.classList.add('no-lyrics');
         parsedLyrics = [];
-        const errHtml = '<div class="py-10 text-center" style="color: #ef4444;">Lyrics unavailable.</div>';
-        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = errHtml;
-        if (fsLyrics) fsLyrics.innerHTML = errHtml;
+        const html = '<div class="py-10 text-center" style="opacity: 0.5;">No lyrics found for this track.</div>';
+        if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
+        if (fsLyrics) fsLyrics.innerHTML = html;
     }
 }
 function renderQueue() {

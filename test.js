@@ -85,9 +85,98 @@ let playlists = [];
 let player = null;
 let progressInterval = null;
 let volume = parseInt(localStorage.getItem('velium_v2_volume')) || 70;
+let settings = JSON.parse(localStorage.getItem('velium_v2_settings')) || {
+    libraryLimit: Infinity,
+    lightMode: false
+};
+
+function saveSettings() {
+    localStorage.setItem('velium_v2_settings', JSON.stringify(settings));
+}
+
+function applySettings() {
+    if (settings.lightMode) {
+        document.body.classList.add('light-mode');
+        const btn = document.getElementById('lightModeToggle');
+        if (btn) btn.textContent = 'On';
+    } else {
+        document.body.classList.remove('light-mode');
+        const btn = document.getElementById('lightModeToggle');
+        if (btn) btn.textContent = 'Off';
+    }
+    
+    // Update limit UI
+    const limits = [50, 100, Infinity];
+    limits.forEach(l => {
+        const btn = document.getElementById(`limit-${l === Infinity ? 'infinite' : l}`);
+        if (btn) btn.classList.toggle('primary', settings.libraryLimit === l);
+    });
+    const customInput = document.getElementById('customLimitInput');
+    if (customInput) {
+        if (!limits.includes(settings.libraryLimit)) {
+            customInput.value = settings.libraryLimit;
+        } else {
+            customInput.value = '';
+        }
+    }
+}
+
+window.showSettingsModal = function() {
+    applySettings();
+    document.getElementById('settingsModal').style.display = 'flex';
+};
+
+window.hideSettingsModal = function() {
+    document.getElementById('settingsModal').style.display = 'none';
+};
+
+window.toggleLightMode = function() {
+    settings.lightMode = !settings.lightMode;
+    saveSettings();
+    applySettings();
+};
+
+window.updateLibraryLimit = function(limit) {
+    settings.libraryLimit = limit || Infinity;
+    saveSettings();
+    applySettings();
+};
+
 let preloadedNextTrack = null;
 let preloadedPrevTrack = null;
 let currentSearchResults = [];
+const pendingSearches = new Map();
+
+async function getYoutubeId(track) {
+    if (!track) return null;
+    if (track.youtube_id || track.videoId) return track.youtube_id || track.videoId;
+    
+    const uid = getTrackUid(track);
+    if (pendingSearches.has(uid)) return pendingSearches.get(uid);
+
+    const promise = (async () => {
+        try {
+            const query = `${track.title} ${track.artist_name} official audio`;
+            const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            if (data.videoId) {
+                track.youtube_id = data.videoId;
+                track.videoId = data.videoId;
+                saveLibraryData();
+                return data.videoId;
+            }
+        } catch (e) {
+            console.error('VELIUM: Search failed', e);
+        } finally {
+            pendingSearches.delete(uid);
+        }
+        return null;
+    })();
+
+    pendingSearches.set(uid, promise);
+    return promise;
+}
+
 const popularArtists = [
     'The Weeknd', 'Drake', 'Post Malone', 'Dua Lipa', 'Ed Sheeran',
     'Ariana Grande', 'Travis Scott', 'Olivia Rodrigo', 'Bad Bunny', 'SZA'
@@ -201,12 +290,15 @@ async function preloadSingleTrack(index, type) {
     const trackUid = getTrackUid(track);
     const cache = type === 'next' ? preloadedNextTrack : preloadedPrevTrack;
     if (cache && cache.uid === trackUid) return;
+
+    // Preload artwork
+    const artworkUrl = track.local_artwork || getProxyUrl(track.artwork_url, '500x500');
+    if (artworkUrl) {
+        const img = new Image();
+        img.src = artworkUrl;
+    }
+
     try {
-        if (track.youtube_id || track.videoId) {
-            const data = { index, uid: trackUid, source: 'youtube', videoId: track.youtube_id || track.videoId };
-            if (type === 'next') preloadedNextTrack = data; else preloadedPrevTrack = data;
-            return;
-        }
         const directUrl = getDownloadUrl(track);
         if (directUrl) {
             const data = { index, uid: trackUid, source: 'audio', url: directUrl };
@@ -223,17 +315,13 @@ async function preloadSingleTrack(index, type) {
             preloadAudio.src = directUrl;
             preloadAudio.load();
         } else {
-            const query = `${track.title} ${track.artist_name} official audio`;
-            const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            if (data.videoId) {
-                track.youtube_id = data.videoId;
-                saveLibraryData();
-                const cacheData = { index, uid: trackUid, source: 'youtube', videoId: data.videoId };
+            const videoId = await getYoutubeId(track);
+            if (videoId) {
+                const cacheData = { index, uid: trackUid, source: 'youtube', videoId: videoId };
                 if (type === 'next') preloadedNextTrack = cacheData; else preloadedPrevTrack = cacheData;
             }
         }
-    } catch (e) { console.warn(`Preload ${type} failed`, e); }
+    } catch (e) { console.warn(`VELIUM: Preload ${type} failed`, e); }
 }
 async function silentPreloadDurations(tracks) {
     if (!tracks || tracks.length === 0) return;
@@ -354,7 +442,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     if (isInitialized) return;
     isInitialized = true;
+
+    // Pre-initialize YouTube API for faster first-track loading
+    if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        if (firstScriptTag) firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+
     await loadLibraryData();
+    applySettings();
     setGreeting();
     setupEventListeners();
     loadPopularTracks().then(tracks => {
@@ -1197,17 +1295,13 @@ async function playTrack(index) {
         preloadTracks();
         return;
     }
-    try {
-        const query = `${currentTrack.title} ${currentTrack.artist_name} official audio`;
-        const response = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-        const data = await response.json();
-        if (data.videoId) {
-            currentTrack.youtube_id = data.videoId;
-            saveLibraryData();
-            loadYouTubePlayer(data.videoId);
-            preloadTracks();
-        }
-    } catch (e) { console.error('Failed to get video ID', e); setPlaybackLoading(false); }
+    const videoId = await getYoutubeId(currentTrack);
+    if (videoId) {
+        loadYouTubePlayer(videoId);
+        preloadTracks();
+    } else {
+        setPlaybackLoading(false);
+    }
 }
 function loadAudioPlayer(url) {
     activeSource = 'audio';
@@ -2219,6 +2313,32 @@ function seekToLyrics(time) {
         player.seekTo(time);
     }
 }
+function adjustLyricsFontSize() {
+    const fsLyrics = document.querySelector('.fs-lyrics-container');
+    if (!fsLyrics) return;
+    const lines = fsLyrics.querySelectorAll('.lyric-line');
+    lines.forEach(line => {
+        if (line.classList.contains('dots-line')) return;
+        let fontSize = 28; 
+        line.style.fontSize = fontSize + 'px';
+        line.style.whiteSpace = 'nowrap'; 
+        
+        // Use a loop to decrease font size until it fits
+        while (line.scrollWidth > line.clientWidth && fontSize > 14) {
+            fontSize -= 1;
+            line.style.fontSize = fontSize + 'px';
+        }
+        
+        // If still too big, allow wrapping as a last resort
+        if (line.scrollWidth > line.clientWidth) {
+            line.style.whiteSpace = 'normal';
+            line.style.wordBreak = 'break-word';
+        }
+    });
+}
+
+window.addEventListener('resize', adjustLyricsFontSize);
+
 async function fetchLyrics() {
     const panelContent = document.getElementById('panelContent');
     const fsLyrics = document.querySelector('.fs-lyrics-container');
@@ -2234,22 +2354,8 @@ async function fetchLyrics() {
 
     try {
         let lyricsText = null;
-        let id = currentTrack.youtube_id || currentTrack.videoId;
-        if (!id) {
-            const query = `${currentTrack.title} ${currentTrack.artist_name}`;
-            try {
-                const searchRes = await fetch(`${API_BASE_URL}/youtube-search?q=${encodeURIComponent(query)}`);
-                const searchData = await searchRes.json();
-                if (searchData.videoId) {
-                    id = searchData.videoId;
-                    currentTrack.youtube_id = id;
-                    currentTrack.videoId = id;
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-        if (!id) id = getTrackUid(currentTrack);
+        const id = await getYoutubeId(currentTrack);
+        if (!id) throw new Error('Could not resolve YouTube ID for lyrics');
 
         const trackName = currentTrack.title;
         const artistName = currentTrack.artist_name;
