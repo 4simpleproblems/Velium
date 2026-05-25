@@ -409,8 +409,22 @@ export default async function handler(req, res) {
         try {
             const yt = await getYoutube();
             const lyrics = await yt.music.getLyrics(songId.replace('ytm-', ''));
-            if (lyrics && lyrics.description) {
-                return res.status(200).json({ lyrics: lyrics.description.toString(), source: 'YTMusic' });
+            
+            if (lyrics) {
+                // If it has timed lyrics, convert them to LRC format for consistency
+                if (lyrics.content && Array.isArray(lyrics.content.lines)) {
+                    const lrcLines = lyrics.content.lines.map(line => {
+                        const start = line.start_time_ms || 0;
+                        const min = Math.floor(start / 60000);
+                        const sec = ((start % 60000) / 1000).toFixed(2);
+                        return `[${min.toString().padStart(2, '0')}:${sec.padStart(5, '0')}]${line.text}`;
+                    });
+                    return res.status(200).json({ lyrics: lrcLines.join('\n'), source: 'YTMusic-Timed' });
+                }
+
+                if (lyrics.description) {
+                    return res.status(200).json({ lyrics: lyrics.description.toString(), source: 'YTMusic' });
+                }
             }
         } catch (e) {
             console.error(e);

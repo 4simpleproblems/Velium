@@ -2102,6 +2102,8 @@ function parseLyrics(lyricsText, duration) {
     const lines = lyricsText.split('\n');
     const parsed = [];
     const timeRegex = /\[(\d+):(\d+)(?:\.(\d+))?\]/;
+    const wordTimeRegex = /<(\d+):(\d+)(?:\.(\d+))?>/g;
+    
     let hasTimestamps = false;
     for (let line of lines) {
         line = line.trim();
@@ -2113,12 +2115,35 @@ function parseLyrics(lyricsText, duration) {
             const seconds = parseInt(match[2]);
             const ms = match[3] ? parseFloat('0.' + match[3]) : 0;
             const time = minutes * 60 + seconds + ms;
-            const text = line.replace(timeRegex, '').trim();
-            parsed.push({ time, text });
+            
+            let text = line.replace(timeRegex, '').trim();
+            
+            // Parse word-level timestamps if available (Enhanced LRC)
+            const words = [];
+            let lastIdx = 0;
+            let wordMatch;
+            while ((wordMatch = wordTimeRegex.exec(text)) !== null) {
+                const wordText = text.substring(lastIdx, wordMatch.index).trim();
+                if (wordText) {
+                    const wMin = parseInt(wordMatch[1]);
+                    const wSec = parseInt(wordMatch[2]);
+                    const wMs = wordMatch[3] ? parseFloat('0.' + wordMatch[3]) : 0;
+                    words.push({ text: wordText, time: wMin * 60 + wSec + wMs });
+                }
+                lastIdx = wordTimeRegex.lastIndex;
+            }
+            const remainingText = text.substring(lastIdx).trim();
+            if (remainingText) words.push({ text: remainingText, time: time + 5 }); // Fallback end time
+
+            // Clean text for display if it had word tags
+            const cleanText = text.replace(wordTimeRegex, ' ').replace(/\s+/g, ' ').trim();
+            
+            parsed.push({ time, text: cleanText, words: words.length > 0 ? words : null });
         } else {
-            parsed.push({ time: null, text: line });
+            parsed.push({ time: null, text: line, words: null });
         }
     }
+
     if (!hasTimestamps && duration && duration > 0) {
         const total = parsed.length;
         parsed.forEach((item, index) => {
@@ -2126,26 +2151,38 @@ function parseLyrics(lyricsText, duration) {
         });
     }
     
-    // Insert dots for long breaks
+    // Insert dots and calculate end times
     const finalParsed = [];
     
-    // Handle start wait (instrumental intro) - if first lyric starts after 3s
+    // Handle start wait (instrumental intro)
     if (parsed.length > 0 && parsed[0].time > 3) {
         finalParsed.push({ 
             time: 0, 
-            endTime: parsed[0].time - 1,
+            endTime: parsed[0].time,
             type: 'dots', 
             text: '...' 
         });
     }
 
     for (let i = 0; i < parsed.length; i++) {
-        finalParsed.push(parsed[i]);
-        // Only insert dots if gap is > 8s and we have at least 4s for the current line
-        if (i < parsed.length - 1 && (parsed[i+1].time - parsed[i].time > 8)) {
+        const current = parsed[i];
+        const next = parsed[i+1];
+        
+        // Calculate endTime based on next line or total duration
+        if (next && next.time !== null) {
+            current.endTime = next.time;
+        } else if (duration) {
+            current.endTime = duration;
+        } else {
+            current.endTime = current.time + 5;
+        }
+
+        finalParsed.push(current);
+
+        if (next && next.time !== null && (next.time - current.time > 8)) {
             finalParsed.push({ 
-                time: parsed[i].time + 4, 
-                endTime: parsed[i+1].time - 1,
+                time: current.time + 4, 
+                endTime: next.time,
                 type: 'dots', 
                 text: '...' 
             });
@@ -2166,17 +2203,16 @@ function updateLyricsSync(currentTime) {
         if (firstLyric && Math.abs(vocalDetectedTime - firstLyric.time) < 2.5) {
             const drift = vocalDetectedTime - firstLyric.time;
             // Apply a small correction if we detected vocals significantly before/after expected
-            if (Math.abs(drift) > 0.1) {
-                adjustedTime -= (drift * 0.5); // Smoothly apply correction
+            if (Math.abs(drift) > 0.05) {
+                adjustedTime -= (drift * 0.4); // Smoothly apply correction
             }
         }
     }
     
     let activeIndex = -1;
     for (let i = 0; i < parsedLyrics.length; i++) {
-        if (adjustedTime >= parsedLyrics[i].time) {
+        if (adjustedTime >= parsedLyrics[i].time && adjustedTime < (parsedLyrics[i].endTime || Infinity)) {
             activeIndex = i;
-        } else {
             break;
         }
     }
@@ -2188,28 +2224,48 @@ function updateLyricsSync(currentTime) {
             if (index === activeIndex) {
                 line.classList.add('active');
                 line.classList.remove('next-up');
+
+                const currentLine = parsedLyrics[index];
+                const startTime = currentLine.time;
+                const endTime = currentLine.endTime;
+                const lineDuration = Math.max(0.1, endTime - startTime);
+                const progress = Math.min(100, Math.max(0, ((adjustedTime - startTime) / lineDuration) * 100));
+                
+                // Update line-level fill progress
+                line.style.setProperty('--lyric-progress', `${progress}%`);
+
                 if (isVisible) {
                     line.scrollIntoView({ behavior: 'auto', block: 'center' });
                 }
                 
+                // Word-level highlighting (if Enhanced LRC is parsed)
+                if (currentLine.words) {
+                    const wordEls = line.querySelectorAll('.word');
+                    currentLine.words.forEach((word, wIdx) => {
+                        if (adjustedTime >= word.time) {
+                            if (wordEls[wIdx]) wordEls[wIdx].classList.add('highlight');
+                        } else {
+                            if (wordEls[wIdx]) wordEls[wIdx].classList.remove('highlight');
+                        }
+                    });
+                }
+
                 // Handle dots animation
                 const dots = line.querySelector('.lyric-dots');
                 if (dots) {
                     dots.classList.add('active');
                     const dotEls = dots.querySelectorAll('.lyric-dot');
-                    const startTime = parsedLyrics[index].time;
-                    const endTime = parsedLyrics[index].endTime;
-                    const duration = Math.max(0.1, endTime - startTime);
-                    const progress = (adjustedTime - startTime) / duration;
+                    const dotProgress = (adjustedTime - startTime) / lineDuration;
                     
                     dotEls.forEach((dot, i) => {
                         const threshold = (i + 1) / 4; 
-                        if (progress > threshold) dot.classList.add('highlight');
+                        if (dotProgress > threshold) dot.classList.add('highlight');
                         else dot.classList.remove('highlight');
                     });
                 }
             } else {
                 line.classList.remove('active');
+                line.style.setProperty('--lyric-progress', '0%');
                 if (index === activeIndex + 1) {
                     line.classList.add('next-up');
                 } else {
@@ -2376,11 +2432,20 @@ async function fetchLyrics() {
                         </div>
                     </div>`;
                 }
+                
                 const contextAttr = (line.time !== null) ? `oncontextmenu="calibrateLyrics(event, ${idx})"` : '';
-                if (line.time !== null && line.time !== undefined) {
-                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})" ${contextAttr}>${escapeHtml(line.text)}</div>`;
+                
+                let lineHtml = '';
+                if (line.words) {
+                    lineHtml = line.words.map(w => `<span class="word">${escapeHtml(w.text)}</span>`).join('');
                 } else {
-                    return `<div class="lyric-line" ${contextAttr}>${escapeHtml(line.text)}</div>`;
+                    lineHtml = escapeHtml(line.text);
+                }
+
+                if (line.time !== null && line.time !== undefined) {
+                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})" ${contextAttr}>${lineHtml}</div>`;
+                } else {
+                    return `<div class="lyric-line" ${contextAttr}>${lineHtml}</div>`;
                 }
             }).join('');
             if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
