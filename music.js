@@ -2577,3 +2577,27 @@ window.togglePlayPause = togglePlayPause;
 window.playNext = playNext;
 window.cycleRepeat = cycleRepeat;
 window.seekToLyrics = seekToLyrics;
+
+let openedTOSFromInfo = false;
+function showInfoModal() {
+    document.getElementById('infoModal').style.display = 'flex';
+}
+function hideInfoModal() {
+    document.getElementById('infoModal').style.display = 'none';
+}
+function showTOSModal(fromInfo = false) {
+    openedTOSFromInfo = fromInfo;
+    document.getElementById('infoModal').style.display = 'none';
+    document.getElementById('tosModal').style.display = 'flex';
+}
+function hideTOSModal() {
+    document.getElementById('tosModal').style.display = 'none';
+    if (openedTOSFromInfo) {
+        document.getElementById('infoModal').style.display = 'flex';
+        openedTOSFromInfo = false;
+    }
+}
+window.showInfoModal = showInfoModal;
+window.hideInfoModal = hideInfoModal;
+window.showTOSModal = showTOSModal;
+window.hideTOSModal = hideTOSModal;
