@@ -2239,6 +2239,40 @@ function seekToLyrics(time) {
         player.seekTo(time);
     }
 }
+function calibrateLyrics(e, index) {
+    e.preventDefault();
+    if (!currentTrack || !parsedLyrics || parsedLyrics.length === 0) return;
+    
+    const audio = document.getElementById('nativeAudio');
+    let currentTime = 0;
+    if (activeSource === 'audio' && audio) {
+        currentTime = audio.currentTime;
+    } else if (player && typeof player.getCurrentTime === 'function') {
+        currentTime = player.getCurrentTime();
+    }
+    
+    if (currentTime <= 0) return;
+
+    // Use a small lead-in to match the user's perception
+    const targetTime = currentTime;
+    const originalTime = parsedLyrics[index].time;
+    const offset = targetTime - originalTime;
+
+    const trackId = getTrackUid(currentTrack);
+    const calibrationData = JSON.parse(localStorage.getItem('velium_lyric_calibration') || '{}');
+    calibrationData[trackId] = offset;
+    localStorage.setItem('velium_lyric_calibration', JSON.stringify(calibrationData));
+
+    showToast(`Lyrics calibrated! Offset: ${offset > 0 ? '+' : ''}${offset.toFixed(2)}s`, 'success');
+    
+    // Apply offset to current session
+    parsedLyrics.forEach(l => {
+        if (l.time !== null) l.time += offset;
+        if (l.endTime !== null) l.endTime += offset;
+    });
+}
+window.calibrateLyrics = calibrateLyrics;
+
 async function fetchLyrics() {
     const panelContent = document.getElementById('panelContent');
     const fsLyrics = document.querySelector('.fs-lyrics-container');
@@ -2320,7 +2354,19 @@ async function fetchLyrics() {
                 }
             }
             parsedLyrics = parseLyrics(lyricsText, duration);
-            const html = parsedLyrics.map(line => {
+
+            // Apply saved calibration
+            const trackId = getTrackUid(currentTrack);
+            const calibrationData = JSON.parse(localStorage.getItem('velium_lyric_calibration') || '{}');
+            const savedOffset = calibrationData[trackId] || 0;
+            if (savedOffset !== 0) {
+                parsedLyrics.forEach(l => {
+                    if (l.time !== null) l.time += savedOffset;
+                    if (l.endTime !== null) l.endTime += savedOffset;
+                });
+            }
+
+            const html = parsedLyrics.map((line, idx) => {
                 if (line.type === 'dots') {
                     return `<div class="lyric-line" style="display: flex; justify-content: center; pointer-events: none;">
                         <div class="lyric-dots">
@@ -2330,10 +2376,11 @@ async function fetchLyrics() {
                         </div>
                     </div>`;
                 }
+                const contextAttr = (line.time !== null) ? `oncontextmenu="calibrateLyrics(event, ${idx})"` : '';
                 if (line.time !== null && line.time !== undefined) {
-                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})">${escapeHtml(line.text)}</div>`;
+                    return `<div class="lyric-line" onclick="seekToLyrics(${line.time})" ${contextAttr}>${escapeHtml(line.text)}</div>`;
                 } else {
-                    return `<div class="lyric-line">${escapeHtml(line.text)}</div>`;
+                    return `<div class="lyric-line" ${contextAttr}>${escapeHtml(line.text)}</div>`;
                 }
             }).join('');
             if (panelContent && currentPanel === 'lyrics') panelContent.innerHTML = html;
