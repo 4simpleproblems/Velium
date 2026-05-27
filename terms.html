@@ -15,6 +15,14 @@
       --text-subdued: #b3b3b3;
       --divider: #282828;
     }
+    body.light-mode {
+      --bg-base: #f3f4f6;
+      --bg-elevated: #ffffff;
+      --bg-hover: #e5e7eb;
+      --text-main: #000000;
+      --text-subdued: #4b5563;
+      --divider: #d1d5db;
+    }
     body {
       margin: 0;
       padding: 0;
@@ -99,6 +107,12 @@
       </a>
     </div>
   </div>
+  <script>
+    const settings = JSON.parse(localStorage.getItem('velium_v2_settings')) || {};
+    if (settings.lightMode) {
+      document.body.classList.add('light-mode');
+    }
+  </script>
 </body>
 </html>
 <!-- Made with ❤️ from 4SP -->

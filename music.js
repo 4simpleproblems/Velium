@@ -222,7 +222,9 @@ function showToast(message, type = 'info') {
         borderColor = 'border-red-500/30';
     }
 
-    toast.className = `velium-toast flex items-center gap-3 px-5 py-3 rounded-xl bg-black/80 backdrop-blur-xl border ${borderColor} text-white shadow-2xl animate-in slide-in-from-right-10 duration-500 pointer-events-auto cursor-pointer`;
+    toast.className = `velium-toast flex items-center gap-3 px-5 py-3 rounded-xl backdrop-blur-xl border ${borderColor} shadow-2xl animate-in slide-in-from-right-10 duration-500 pointer-events-auto cursor-pointer`;
+    toast.style.backgroundColor = 'var(--toast-bg)';
+    toast.style.color = 'var(--toast-text)';
     
     toast.innerHTML = `
         <i class="fa-solid ${iconClass} text-lg"></i>
@@ -733,6 +735,7 @@ function updateFullscreenTint(imageUrl) {
 function switchView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
     
     const targetView = document.getElementById(viewName + 'View') || document.getElementById(viewName);
     if (targetView) {
@@ -743,6 +746,9 @@ function switchView(viewName) {
     
     const navItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
     if (navItem) navItem.classList.add('active');
+
+    const mobileNavItem = document.querySelector(`.mobile-nav-item[data-view="${viewName}"]`);
+    if (mobileNavItem) mobileNavItem.classList.add('active');
     
     if (viewName === 'favorites') renderFavorites();
     if (viewName === 'library') renderLibrary();
@@ -1804,6 +1810,8 @@ function togglePlayPause() {
 function updatePlayPauseUI() {
     const btn = document.getElementById('playPauseButton');
     if (btn) btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:2px;"></i>';
+    const mobileBtn = document.getElementById('mobilePlayPause');
+    if (mobileBtn) mobileBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:2px;"></i>';
     const fsBtn = document.getElementById('fsPlayPause');
     if (fsBtn) fsBtn.innerHTML = isPlaying ? '<i class="fas fa-pause text-4xl lg:text-6xl text-black"></i>' : '<i class="fas fa-play text-4xl lg:text-6xl ml-1 text-black"></i>';
     

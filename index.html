@@ -78,6 +78,8 @@
       --text-main: #ffffff;
       --text-subdued: #b3b3b3;
       --divider: #282828;
+      --toast-bg: rgba(0, 0, 0, 0.8);
+      --toast-text: #ffffff;
     }
     body.light-mode {
       --bg-base: #f3f4f6;
@@ -87,6 +89,8 @@
       --text-main: #000000;
       --text-subdued: #4b5563;
       --divider: #d1d5db;
+      --toast-bg: rgba(255, 255, 255, 0.9);
+      --toast-text: #000000;
     }
     body {
       margin: 0;
@@ -159,8 +163,8 @@
     .main-view { grid-area: main; background-color: var(--bg-elevated); overflow-y: auto; position: relative; }
     .view { display: none; padding-bottom: 40px; }
     .view.active { display: block !important; }
-    .hero-header { padding: 80px 32px 32px 32px; display: flex; align-items: flex-end; gap: 32px; background: linear-gradient(to bottom, rgba(80,80,80,1) 0%, var(--bg-elevated) 100%); }
-    .artist-img { width: 232px; height: 232px; background-color: #1a1a1a; box-shadow: 0 4px 60px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 64px; color: #333; overflow: hidden; }
+    .hero-header { padding: 80px 32px 32px 32px; display: flex; align-items: flex-end; gap: 32px; background: linear-gradient(to bottom, var(--bg-highlight) 0%, var(--bg-elevated) 100%); }
+    .artist-img { width: 232px; height: 232px; background-color: var(--bg-highlight); box-shadow: 0 4px 60px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 64px; color: var(--text-subdued); overflow: hidden; }
     .artist-img img { width: 100%; height: 100%; object-fit: cover; }
     .hero-meta { display: flex; flex-direction: column; gap: 8px; }
     .artist-header { font-family: 'Manrope', sans-serif; font-size: 80px; font-weight: 900; margin: 0; color: var(--text-main); letter-spacing: -4px; }
@@ -288,7 +292,7 @@
     
     /* Playing Bar Animation */
     .playing-bars { display: none; width: 24px; height: 24px; gap: 3px; align-items: flex-end; justify-content: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; }
-    .playing-bars div { background-color: #fff; width: 4px; border-radius: 2px !important; animation: bar-bounce 1s infinite ease-in-out; }
+    .playing-bars div { background-color: var(--text-main); width: 4px; border-radius: 2px !important; animation: bar-bounce 1s infinite ease-in-out; }
     .playing-bars div:nth-child(2) { animation-delay: 0.2s; }
     .playing-bars div:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bar-bounce { 0%, 100% { height: 6px; } 50% { height: 20px; } }
@@ -365,11 +369,187 @@
     .extra-controls { display: flex; align-items: center; gap: 16px; width: 30%; justify-content: flex-end; }
     .vol-bar { width: 90px; height: 4px; background-color: #4d4d4d; display: flex; cursor: pointer; position: relative; border-radius: 2px; }
     .vol-fg { height: 100%; background-color: var(--text-main); border-radius: 2px; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 200000; }
-    .modal-content { background-color: #000000; border: 1px solid var(--divider); width: 90%; max-width: 550px; border-radius: 20px; padding: 24px; box-sizing: border-box; font-family: 'Manrope', sans-serif; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 200000; }
+    body.light-mode .modal-overlay { background: rgba(255, 255, 255, 0.5); }
+    .modal-content { background-color: var(--bg-elevated); border: 1px solid var(--divider); width: 90%; max-width: 550px; border-radius: 20px; padding: 24px; box-sizing: border-box; font-family: 'Manrope', sans-serif; color: var(--text-main); }
     .modal-content input, .modal-content textarea, .modal-content button, .modal-content label { font-family: 'Manrope', sans-serif; }
     .modal-title { font-size: 24px; font-weight: 800; margin-bottom: 16px; color: var(--text-main); font-family: 'Manrope', sans-serif; }
     .modal-input { width: 100%; background-color: var(--bg-highlight); border: 1px solid var(--divider); color: var(--text-main); padding: 12px; border-radius: 4px; margin-bottom: 16px; outline: none; box-sizing: border-box; font-family: 'Manrope', sans-serif; }
+    
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      body {
+        grid-template-areas:
+          "main"
+          "playbar";
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 100px;
+      }
+      .sidebar {
+        position: fixed;
+        bottom: 100px;
+        left: 0;
+        right: 0;
+        height: auto;
+        background-color: var(--bg-base);
+        border-top: 1px solid var(--divider);
+        z-index: 20;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 8px 0;
+        display: none; /* We'll use a bottom nav or just keep it simple for now */
+      }
+      /* Alternative: Keep sidebar but make it a bottom nav */
+      body {
+        grid-template-areas:
+          "main"
+          "playbar";
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 90px;
+      }
+      .sidebar {
+        display: none;
+      }
+      .main-view {
+        grid-area: main;
+      }
+      .hero-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 60px 20px 20px 20px;
+      }
+      .artist-img {
+        width: 180px;
+        height: 180px;
+      }
+      .artist-header {
+        font-size: 40px;
+        letter-spacing: -2px;
+      }
+      .action-bar {
+        justify-content: center;
+        padding: 16px;
+      }
+      .track-section {
+        padding: 0 16px 40px 16px;
+      }
+      .track-row {
+        grid-template-columns: 40px 1fr auto;
+        gap: 12px;
+      }
+      .track-album, .track-duration {
+        display: none;
+      }
+      .now-playing {
+        width: 100%;
+        min-width: 0;
+      }
+      .player-controls {
+        display: none; /* We'll add a simplified mobile player or just use fullscreen */
+      }
+      .extra-controls {
+        display: none;
+      }
+      .playbar {
+        padding: 0 12px;
+        justify-content: space-between;
+      }
+      .now-playing .np-plus, .now-playing .np-like {
+        margin-left: 8px;
+      }
+      .mobile-only-play {
+        display: flex !important;
+      }
+      .np-info {
+        flex: 1;
+      }
+
+      /* Mobile Bottom Nav */
+      .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 90px;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-base);
+        border-top: 1px solid var(--divider);
+        z-index: 100;
+        height: 60px;
+        justify-content: space-around;
+        align-items: center;
+      }
+      .mobile-nav-item {
+        color: var(--text-subdued);
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 10px;
+        gap: 4px;
+      }
+      .mobile-nav-item.active {
+        color: var(--text-main);
+      }
+      .mobile-nav-item i {
+        font-size: 20px;
+      }
+      body {
+        grid-template-rows: 1fr 150px; /* main + bottom nav + playbar */
+      }
+      .playbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 90px;
+      }
+      body.panel-active {
+        grid-template-columns: 1fr;
+      }
+      .right-panel {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background-color: var(--bg-base);
+        padding-bottom: 150px; /* Space for navs */
+      }
+      /* Fullscreen Player Mobile */
+      .fs-main {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+      }
+      .fs-art-container {
+        width: 70vw;
+        height: 70vw;
+        margin: 20px auto;
+      }
+      .fs-lyrics-container {
+        padding: 5vh 0;
+        text-align: center;
+      }
+      .fs-lyrics-container .lyric-line {
+        font-size: 24px;
+        text-align: center;
+        transform-origin: center;
+      }
+      .fs-meta .np-title {
+        font-size: 24px;
+      }
+      .fs-controls-container {
+        padding: 20px;
+        margin-top: 0;
+      }
+      .fs-top-bar {
+        padding: 10px 0;
+      }
+    }
+    @media (min-width: 769px) {
+      .mobile-nav {
+        display: none;
+      }
+    }
     .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; }
     .btn-flat { background: none; border: none; color: var(--text-main); font-weight: 700; cursor: pointer; padding: 8px 16px; }
     .btn-flat.primary { background-color: var(--text-main); color: #000; border-radius: 24px; padding: 12px 32px; }
@@ -487,7 +667,7 @@
     #startup-loader.hidden { opacity: 0; visibility: hidden; }
     .loader-logo { width: 80px; height: 80px; margin-bottom: 24px; animation: pulse 2s infinite ease-in-out; }
     .loader-bar { width: 200px; height: 2px; background: var(--divider); border-radius: 4px; overflow: hidden; position: relative; }
-    .loader-progress { position: absolute; top: 0; left: 0; height: 100%; width: 50%; background: #fff; border-radius: 4px; animation: loading 1.5s infinite ease-in-out; }
+    .loader-progress { position: absolute; top: 0; left: 0; height: 100%; width: 50%; background: var(--text-main); border-radius: 4px; animation: loading 1.5s infinite ease-in-out; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } }
     @keyframes loading { 0% { left: -50%; } 100% { left: 100%; } }
     .hidden { display: none !important; }
@@ -632,6 +812,21 @@
     <div class="panel-header"><div class="panel-title" id="panelTitle">Lyrics</div></div>
     <div class="panel-content" id="panelContent"></div>
   </aside>
+  <nav class="mobile-nav">
+    <a href="#" class="mobile-nav-item active" data-view="home" onclick="event.preventDefault(); switchView('home')">
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-view="search" onclick="event.preventDefault(); switchView('search')">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>Search</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-view="library" onclick="event.preventDefault(); switchView('library')">
+      <i class="fa-solid fa-book-open"></i>
+      <span>Library</span>
+    </a>
+  </nav>
+
   <footer class="playbar">
     <div class="now-playing">
       <img src="" class="np-art hidden" id="currentArtwork" onclick="toggleFullscreenPlayer()">
@@ -642,6 +837,7 @@
       </div>
       <button class="np-plus" id="addToPlaylistBtn" onclick="showAddToPlaylistModal()"><i class="fa-solid fa-plus"></i></button>
       <button class="np-like" id="likeButton" onclick="toggleLike()"><i class="fa-regular fa-heart"></i></button>
+      <button class="ctrl-play mobile-only-play" id="mobilePlayPause" onclick="togglePlayPause()" style="display: none; width: 32px; height: 32px; flex-shrink: 0;"><i class="fa-solid fa-play"></i></button>
     </div>
     <div class="player-controls">
       <div id="playbackLoading" class="hidden" style="padding: 20px;"><i class="fa-solid fa-circle-notch fa-spin fa-2xl" style="color: var(--text-main);"></i></div>
@@ -742,7 +938,7 @@
   <div id="toastContainer" style="position: fixed; bottom: 110px; right: 24px; z-index: 100000; display: flex; flex-direction: column; gap: 8px; pointer-events: none;"></div>
   <div id="audioElement"></div>
   <div id="infoModal" class="modal-overlay">
-    <div class="modal-content" style="background-color: #000000; border-radius: 20px; max-width: 550px; border: 1px solid var(--divider);">
+    <div class="modal-content" style="border-radius: 20px; max-width: 550px; border: 1px solid var(--divider);">
       <h2 class="modal-title">Velium Info & Disclaimer</h2>
       <ul style="font-size: 14px; color: var(--text-subdued); line-height: 1.8; margin-bottom: 24px; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; font-family: 'Manrope', sans-serif;">
         <li><strong>Important Playback Info:</strong> Not all songs will play with a 100% guarantee. Due to third-party source fluctuations, some tracks might fail to resolve or buffer.</li>
