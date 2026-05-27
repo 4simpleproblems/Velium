@@ -200,6 +200,7 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
 function observeImages(container) {
     if (!container) return;
     const images = container.querySelectorAll('img[data-src]');
+    if (images.length === 0) return;
     images.forEach(img => imageObserver.observe(img));
 }
 function showToast(message, type = 'info') {
@@ -1215,9 +1216,15 @@ function renderTrackGrid(tracks, container, parentList = null) {
         card.className = 'track-card';
         card.dataset.uid = trackUid;
         const artworkUrl = track.local_artwork || getProxyUrl(track.artwork_url);
+        
+        // Instant load for home view, lazy for others
+        const imgHtml = isHomeView 
+            ? `<img src="${artworkUrl}" class="card-thumb" style="margin-bottom: 0;">`
+            : `<img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy" style="margin-bottom: 0;">`;
+
         card.innerHTML = `
             <div style="position: relative; overflow: hidden; margin-bottom: 16px;">
-                <img data-src="${artworkUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="card-thumb" loading="lazy" style="margin-bottom: 0;">
+                ${imgHtml}
                 ${(isSearchView || isHomeView) ? '' : `
                 <button class="card-plus-btn" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); border: none; border-radius: 50% !important; width: 30px; height: 30px; color: #fff; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; cursor: pointer;" title="Add to Playlist">
                     <i class="fa-solid fa-plus" style="font-size: 14px;"></i>
