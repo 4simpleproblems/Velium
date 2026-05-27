@@ -32,38 +32,41 @@
     (async () => {
         if ("serviceWorker" in navigator) {
             try {
+                // Safari 11.1+ support and general robustness
                 const reg = await navigator.serviceWorker.register("/sw.js", {
                     scope: "/"
                 });
-                console.log("VERN_SYSTEM SW Registered at root");
+                console.log("VELIUM: SW Registered");
+                
+                // Force update if needed
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
             } catch (e) {
                 console.error("SW Register Failed", e);
             }
         }
         try {
             const workerPath = "/baremux/worker.js";
+            // Safari workaround: check if SharedWorker is actually supported well
             const connection = new BareMux.BareMuxConnection(workerPath);
             const wispUrl = "wss://wisp.mercurywork.shop/";
             await connection.setTransport("/libcurl/index.mjs", [{ websocket: wispUrl }]);
-            console.log("VELIUM: BareMux Transport Active (Local)");
-            const bc = new BroadcastChannel("bare-mux-sync");
+            console.log("VELIUM: BareMux Active");
+
             const signalReady = () => {
                 const msg = { type: 'baremuxready', path: workerPath };
-                bc.postMessage(msg);
                 if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage(msg);
                 }
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    registrations.forEach(reg => {
-                        const sw = reg.active || reg.waiting || reg.installing;
-                        if (sw) sw.postMessage(msg);
-                    });
-                });
+                // BroadcastChannel fallback for Safari
+                try {
+                    const bc = new BroadcastChannel("bare-mux-sync");
+                    bc.postMessage(msg);
+                } catch(e) {}
             };
             signalReady();
-            setTimeout(signalReady, 500);
-            setTimeout(signalReady, 2000);
-            console.log("VELIUM: BareMux Ready Signal Sent");
+            setTimeout(signalReady, 1000);
         } catch (e) {
             console.error("BareMux Init Failed", e);
         }
@@ -533,64 +536,72 @@
 
       /* Fullscreen Player Mobile */
       .fullscreen-overlay {
-        padding: 20px;
+        padding: 16px;
+        justify-content: space-between;
       }
       .fs-main {
+        flex: 1;
         flex-direction: column;
-        gap: 15px;
+        gap: 12px;
         padding: 0;
-        justify-content: flex-start;
-        margin-top: 20px;
+        justify-content: center;
+        margin: 0;
+        min-height: 0;
       }
       .fs-art-container {
-        width: 80vw;
-        height: 80vw;
-        margin: 10px auto;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+        width: 65vw;
+        height: 65vw;
+        max-width: 300px;
+        max-height: 300px;
+        margin: 0 auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6);
       }
       .fs-lyrics-container {
-        padding: 20px 0;
+        padding: 10px 0;
         text-align: center;
-        max-height: 25vh;
-        mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
-        -webkit-mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
+        max-height: 20vh;
+        flex: 0 1 auto;
+        mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
       }
       .fs-lyrics-container .lyric-line {
-        font-size: 20px;
-        text-align: center;
-        transform-origin: center;
+        font-size: 18px;
+        padding: 4px 0;
+        line-height: 1.2;
       }
       .fs-meta {
-        padding: 0;
+        padding: 8px 0;
         text-align: center;
+        margin: 0;
       }
       .fs-meta .np-title {
-        font-size: 24px;
-        white-space: normal;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
+        font-size: 20px;
+        font-weight: 800;
+        white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
       .fs-meta .np-artist {
-        font-size: 14px;
-        margin-top: 4px;
+        font-size: 13px;
+        margin-top: 2px;
       }
       .fs-controls-container {
         padding: 0;
-        gap: 15px;
-        margin-top: auto;
-        padding-bottom: 20px;
-      }
-      .fs-top-bar {
-        padding: 0;
+        gap: 12px;
+        width: 100%;
+        max-width: 100%;
       }
       .fs-controls-container .control-buttons {
-        gap: 20px;
+        gap: 16px;
       }
       .fs-controls-container .ctrl-play {
-        width: 56px;
-        height: 56px;
+        width: 48px;
+        height: 48px;
+      }
+      .fs-top-bar {
+        margin-bottom: 0;
+        padding-bottom: 10px;
       }
     }
     @media (min-width: 769px) {

@@ -4,23 +4,36 @@ importScripts('baremux/index.js');
 
 // Consistent SharedWorker worker path
 const workerPath = "/baremux/worker.js";
-let connection = new BareMux.WorkerConnection(workerPath);
-let bareClient = new BareMux.BareClient(connection);
+let connection = null;
+let bareClient = null;
+
+try {
+    connection = new BareMux.BareMuxConnection(workerPath);
+    bareClient = new BareMux.BareClient(connection);
+} catch (e) {
+    console.error("VELIUM SW: BareMux Client Init Failed", e);
+}
 
 importScripts(__uv$config.sw || 'v-proxy/uv.sw.js');
 
 const uv = new UVServiceWorker();
-uv.bareClient = bareClient;
+if (bareClient) uv.bareClient = bareClient;
 
 // Sync port from main thread or other clients
 self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
     if (event.data && (event.data.type === 'baremuxinit' || event.data.type === 'baremuxready')) {
         const path = event.data.path || workerPath;
-        // Re-initialize to refresh connection
-        connection = new BareMux.WorkerConnection(path);
-        bareClient = new BareMux.BareClient(connection);
-        uv.bareClient = bareClient;
-        console.log("VELIUM SW: BareMux Connection Refreshed (" + event.data.type + ")");
+        try {
+            connection = new BareMux.BareMuxConnection(path);
+            bareClient = new BareMux.BareClient(connection);
+            uv.bareClient = bareClient;
+            console.log("VELIUM SW: BareMux Refreshed");
+        } catch (e) {
+            console.error("VELIUM SW: BareMux Refresh Failed", e);
+        }
     }
 });
 
