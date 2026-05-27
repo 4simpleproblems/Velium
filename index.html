@@ -514,35 +514,83 @@
         background-color: var(--bg-base);
         padding-bottom: 150px; /* Space for navs */
       }
+      
+      /* Smaller Categories for Mobile */
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .category-card {
+        padding: 16px;
+        aspect-ratio: 1.5 / 1;
+      }
+      .category-title {
+        font-size: 16px;
+      }
+      .category-icon {
+        font-size: 48px;
+      }
+
       /* Fullscreen Player Mobile */
-      .fs-main {
-        flex-direction: column;
-        gap: 20px;
+      .fullscreen-overlay {
         padding: 20px;
       }
+      .fs-main {
+        flex-direction: column;
+        gap: 15px;
+        padding: 0;
+        justify-content: flex-start;
+        margin-top: 20px;
+      }
       .fs-art-container {
-        width: 70vw;
-        height: 70vw;
-        margin: 20px auto;
+        width: 80vw;
+        height: 80vw;
+        margin: 10px auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
       }
       .fs-lyrics-container {
-        padding: 5vh 0;
+        padding: 20px 0;
         text-align: center;
+        max-height: 25vh;
+        mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent);
       }
       .fs-lyrics-container .lyric-line {
-        font-size: 24px;
+        font-size: 20px;
         text-align: center;
         transform-origin: center;
       }
+      .fs-meta {
+        padding: 0;
+        text-align: center;
+      }
       .fs-meta .np-title {
         font-size: 24px;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .fs-meta .np-artist {
+        font-size: 14px;
+        margin-top: 4px;
       }
       .fs-controls-container {
-        padding: 20px;
-        margin-top: 0;
+        padding: 0;
+        gap: 15px;
+        margin-top: auto;
+        padding-bottom: 20px;
       }
       .fs-top-bar {
-        padding: 10px 0;
+        padding: 0;
+      }
+      .fs-controls-container .control-buttons {
+        gap: 20px;
+      }
+      .fs-controls-container .ctrl-play {
+        width: 56px;
+        height: 56px;
       }
     }
     @media (min-width: 769px) {
